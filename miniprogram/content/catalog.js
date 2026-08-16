@@ -1,14 +1,19 @@
 /**
  * 书目总表（PRD §3.2 / §4.2）
  *
- * V1.0 规划 30 本 × 每本 6 页，分 5 个系列。`released` 控制分批上线：
+ * V1.0 规划 36 本 × 每本 6 页，分 6 个系列。`released` 控制分批上线：
  * 未发布的书在列表里显示「敬请期待」占位卡，点不进去（PRD §3.2 上线批次）。
  *
- * 已上线的书从 books/ 目录里逐本引入 —— 刻意一本一个文件而不是堆在一起：
- * 满编 30 本时台词加起来近三千行，单文件会变成谁都不敢动的巨石。
+ * 写好台词的书从 books/ 目录里逐本引入 —— 刻意一本一个文件而不是堆在一起：
+ * 满编时台词加起来近四千行，单文件会变成谁都不敢动的巨石。
+ *
+ * `released` 与「内容是否写好」是**两件事**：有 pages 但 released=false 表示
+ * 「内容已就绪、暂不首发」。内容检查（check.mjs）与语料生成（gen-tts.mjs）
+ * 都只看有没有 pages，不看 released —— 否则一本书下架就会把它的语料判成孤儿。
  *
  * `source` 是小红书原作标题，仅供内部选题溯源与版权自查，**不在 UI 展示**。
  */
+const vegetables = require('./books/vegetables');
 const antAndElephant = require('./books/ant-and-elephant');
 
 /** 未上线占位（pages 为空，released = false） */
@@ -20,7 +25,32 @@ function soon(id, series, title, titleCn, tag, emoji, cover, level, source) {
 }
 
 const bookList = [
-  // ———— 系列一 · 小动物交朋友 🐾 ————
+  // ———— 认知启蒙 🥕（素材来源：小红书 @阿可英语绘）————
+  {
+    id: 'vegetables',
+    series: 'basics',
+    title: 'Vegetables',
+    titleCn: '蔬菜认知篇',
+    tag: '蔬菜认知',
+    emoji: '🥕',
+    cover: 'linear-gradient(135deg, #BBF7D0 0%, #FB923C 100%)',
+    level: 1,
+    released: true,
+    source: '@阿可英语绘《vegetables 蔬菜认知篇 英文绘本》',
+    pages: vegetables,
+  },
+  soon('fruits', 'basics', 'Fruits', '水果认知篇', '水果认知', '🍎',
+    'linear-gradient(135deg, #FECACA 0%, #F87171 100%)', 1, '@阿可英语绘 认知篇系列'),
+  soon('colors', 'basics', 'Colors', '颜色认知篇', '颜色认知', '🎨',
+    'linear-gradient(135deg, #DDD6FE 0%, #A78BFA 100%)', 1, '@阿可英语绘 认知篇系列'),
+  soon('numbers', 'basics', 'Numbers', '数字认知篇', '数字认知', '🔢',
+    'linear-gradient(135deg, #BFDBFE 0%, #60A5FA 100%)', 1, '@阿可英语绘 认知篇系列'),
+  soon('shapes', 'basics', 'Shapes', '形状认知篇', '形状认知', '🔷',
+    'linear-gradient(135deg, #A5F3FC 0%, #22D3EE 100%)', 1, '@阿可英语绘 认知篇系列'),
+  soon('farm-animals', 'basics', 'Farm Animals', '农场动物篇', '动物认知', '🐄',
+    'linear-gradient(135deg, #FDE68A 0%, #FBBF24 100%)', 1, '@阿可英语绘 认知篇系列'),
+
+  // ———— 系列一 · 小动物交朋友 🐾（素材来源：小红书 @快乐学英语008）————
   {
     id: 'ant-and-elephant',
     series: 'friends',
@@ -30,7 +60,9 @@ const bookList = [
     emoji: '🐜',
     cover: 'linear-gradient(135deg, #A7F3D0 0%, #34D399 100%)',
     level: 1,
-    released: true,
+    // 台词与语料都已就绪，只是暂不作为首发内容 —— 想上架把这行改回 true 即可，
+    // 内容检查与语料生成都不看 released，所以它一直是「随时可发」的状态
+    released: false,
     source: '《小蚂蚁和大象》',
     pages: antAndElephant,
   },

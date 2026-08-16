@@ -48,8 +48,10 @@ function add(text) {
   corpus.set(key, t);
 }
 
+// 按「有没有写好台词」收集，而不是按 released ——
+// 一本书临时下架不该让它的语料变成孤儿、下次上架又要重新生成一遍。
 for (const book of bookList) {
-  if (!book.released) continue;
+  if (!book.pages || book.pages.length === 0) continue;
   for (const page of book.pages) {
     splitSentences(page.en).forEach(add);
     (page.glossary || []).forEach((g) => add(g.word));

@@ -145,12 +145,19 @@ const { buildScene, sceneNames } = require(path.join(MP, 'core/scenery.js'));
 const { ttsKey, normalize } = require(path.join(MP, 'core/hash.js'));
 const settings = require(path.join(MP, 'core/settings.js'));
 
-const released = bookList.filter((b) => b.released);
-console.log(`    书目 ${bookList.length} 本（已上线 ${released.length} 本）/ 系列 ${seriesOrder.length} 个`);
+// 检查「写好台词的书」而不是「已上线的书」：内容对不对与发不发布无关，
+// 下架一本书不该让它的内容与语料脱离检查范围。
+const authored = bookList.filter((b) => b.pages && b.pages.length > 0);
+const live = bookList.filter((b) => b.released);
+console.log(`    书目 ${bookList.length} 本（已写台词 ${authored.length} 本 / 已上线 ${live.length} 本）/ 系列 ${seriesOrder.length} 个`);
 
-bookList.length === 30
-  ? ok('书目 30 本（PRD §3.2）')
-  : bad(`书目 ${bookList.length} 本，PRD 规划为 30 本`);
+bookList.length === 36
+  ? ok('书目 36 本（PRD §3.2）')
+  : bad(`书目 ${bookList.length} 本，PRD 规划为 36 本`);
+
+live.every((b) => b.pages && b.pages.length > 0)
+  ? ok('已上线的书都写好了台词')
+  : bad(`已上线但没有台词：${live.filter((b) => !b.pages.length).map((b) => b.id).join(', ')}`);
 
 // id 唯一
 const ids = bookList.map((b) => b.id);
@@ -173,7 +180,7 @@ const LEVEL_RULES = {
   2: { maxSentences: 3, maxWords: 14 },
 };
 
-released.forEach((book) => {
+authored.forEach((book) => {
   const problems = [];
 
   if (book.pages.length !== 6) problems.push(`页数 ${book.pages.length}，应为 6`);
@@ -231,7 +238,7 @@ const onDisk = fs.existsSync(AUDIO_DIR)
   : new Set();
 
 const needed = new Map();
-released.forEach((book) => {
+authored.forEach((book) => {
   book.pages.forEach((page) => {
     splitSentences(page.en).forEach((s) => needed.set(ttsKey(s), s));
     (page.glossary || []).forEach((g) => needed.set(ttsKey(g.word), normalize(g.word)));

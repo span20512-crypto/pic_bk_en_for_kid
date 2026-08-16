@@ -333,6 +333,140 @@ function seaside(accent) {
     '<circle cx="270" cy="194" r="2.4" fill="#fff" opacity="0.75"/>';
 }
 
+/** 菜园：翻好的垄畦 + 篱笆 + 露头的菜叶，认知类绘本的主场景 */
+function garden(accent) {
+  // 菜叶丛：三片叶子一簇，露在垄上，轻轻摇
+  const leafy = (x, y, s, fill, delay) =>
+    `<g>${sway(x, y, 4, 3.4, delay)}` +
+    `<path d="M${x} ${y} Q${x - 9 * s} ${y - 14 * s} ${x - 4 * s} ${y - 23 * s}" stroke="#15803D" stroke-width="${2 * s}" fill="none" stroke-linecap="round"/>` +
+    `<path d="M${x} ${y} Q${x + 1 * s} ${y - 16 * s} ${x + 1 * s} ${y - 27 * s}" stroke="#16A34A" stroke-width="${2 * s}" fill="none" stroke-linecap="round"/>` +
+    `<path d="M${x} ${y} Q${x + 9 * s} ${y - 13 * s} ${x + 6 * s} ${y - 22 * s}" stroke="#22C55E" stroke-width="${2 * s}" fill="none" stroke-linecap="round"/>` +
+    `<ellipse cx="${x - 4 * s}" cy="${y - 24 * s}" rx="${3.4 * s}" ry="${5 * s}" fill="#22C55E"/>` +
+    `<ellipse cx="${x + 1 * s}" cy="${y - 28 * s}" rx="${3.6 * s}" ry="${5.4 * s}" fill="#16A34A"/>` +
+    `<ellipse cx="${x + 6 * s}" cy="${y - 23 * s}" rx="${3.4 * s}" ry="${5 * s}" fill="#4ADE80"/>` +
+    `<path d="M${x - 4 * s} ${y} Q${x} ${y + 8 * s} ${x + 4 * s} ${y} Z" fill="${fill}"/>` + '</g>';
+
+  return sky('#7DD3FC', '#E0F2FE') +
+    sun(268, 34, 15) +
+    cloud(70, 28, 0.95, 0.85, 14, 10, 0) +
+    cloud(184, 40, 0.62, 0.55, -10, 9, 2.5) +
+    // 远处树篱
+    '<ellipse cx="36" cy="106" rx="48" ry="19" fill="#16A34A" opacity="0.65"/>' +
+    '<ellipse cx="132" cy="108" rx="54" ry="17" fill="#22C55E" opacity="0.6"/>' +
+    '<ellipse cx="244" cy="106" rx="52" ry="19" fill="#16A34A" opacity="0.55"/>' +
+    '<ellipse cx="160" cy="118" rx="250" ry="15" fill="#4ADE80"/>' +
+    // 木篱笆
+    '<g opacity="0.9"><rect y="114" width="320" height="3.6" rx="1.8" fill="#B4835B"/>' +
+    '<rect x="16" y="106" width="5" height="21" rx="2" fill="#C89B6C"/><rect x="76" y="106" width="5" height="21" rx="2" fill="#C89B6C"/>' +
+    '<rect x="136" y="106" width="5" height="21" rx="2" fill="#C89B6C"/><rect x="196" y="106" width="5" height="21" rx="2" fill="#C89B6C"/>' +
+    '<rect x="256" y="106" width="5" height="21" rx="2" fill="#C89B6C"/><rect x="304" y="106" width="5" height="21" rx="2" fill="#C89B6C"/></g>' +
+    // 翻好的垄畦，由远及近三道
+    '<ellipse cx="160" cy="146" rx="250" ry="26" fill="#B45309"/>' +
+    '<ellipse cx="160" cy="142" rx="240" ry="19" fill="#C2874A"/>' +
+    '<ellipse cx="160" cy="176" rx="250" ry="26" fill="#A16207"/>' +
+    '<ellipse cx="160" cy="212" rx="250" ry="28" fill="#8B5E34"/>' +
+    '<ellipse cx="160" cy="160" rx="238" ry="3" fill="#78350F" opacity="0.42"/>' +
+    '<ellipse cx="160" cy="194" rx="238" ry="3" fill="#63340E" opacity="0.4"/>' +
+    // 菜叶（近排大、远排小）
+    leafy(56, 148, 0.8, accent, 0.3) +
+    leafy(200, 146, 0.75, '#F97316', 0.9) +
+    leafy(104, 180, 1, accent, 0.6) +
+    leafy(248, 178, 0.95, '#F97316', 1.3) +
+    // 洒水壶
+    '<g><rect x="18" y="188" width="27" height="19" rx="5" fill="#94A3B8"/>' +
+    '<path d="M45 192 L60 184 L62 187 L47 196 Z" fill="#94A3B8"/>' +
+    '<path d="M22 188 Q28 176 39 184" stroke="#94A3B8" stroke-width="3" fill="none"/>' +
+    '<rect x="58" y="182" width="7" height="5" rx="2" fill="#CBD5E1"/></g>' +
+    // 泥块与蝴蝶
+    '<circle cx="152" cy="200" r="3" fill="#57200A" opacity="0.5"/>' +
+    '<circle cx="286" cy="206" r="2.4" fill="#57200A" opacity="0.45"/>' +
+    butterfly(196, 76, 0.9, accent, 0.4) +
+    `<circle cx="112" cy="62" r="2.2" fill="#fff" opacity="0.7">${twinkle(2.4, 0.5)}</circle>`;
+}
+
+/** 田野：成排的高秆作物一直排到地平线，玉米/麦子这类「长在地里」的题材 */
+function field(accent) {
+  // 一根高秆：茎 + 两侧长叶
+  const stalk = (x, groundY, h, s, color, delay) =>
+    `<g>${sway(x, groundY, 2.5, 4.2, delay)}` +
+    `<line x1="${x}" y1="${groundY}" x2="${x}" y2="${groundY - h}" stroke="${color}" stroke-width="${2.6 * s}" stroke-linecap="round"/>` +
+    `<path d="M${x} ${groundY - h * 0.75} Q${x - 14 * s} ${groundY - h * 0.72} ${x - 20 * s} ${groundY - h * 0.42}" stroke="${color}" stroke-width="${2.2 * s}" fill="none" stroke-linecap="round"/>` +
+    `<path d="M${x} ${groundY - h * 0.58} Q${x + 14 * s} ${groundY - h * 0.55} ${x + 20 * s} ${groundY - h * 0.26}" stroke="${color}" stroke-width="${2.2 * s}" fill="none" stroke-linecap="round"/>` +
+    `<ellipse cx="${x}" cy="${groundY - h - 3 * s}" rx="${3 * s}" ry="${7 * s}" fill="${accent}"/>` + '</g>';
+
+  return sky('#93C5FD', '#FEF3C7') +
+    sun(62, 40, 16) +
+    cloud(196, 30, 0.95, 0.8, 14, 11, 0) +
+    cloud(288, 56, 0.6, 0.5, -10, 9, 3) +
+    // 远山与地平线
+    '<polygon points="0,116 58,86 116,116" fill="#A5B4FC" opacity="0.6"/>' +
+    '<polygon points="180,116 244,88 320,116" fill="#A5B4FC" opacity="0.5"/>' +
+    '<ellipse cx="160" cy="126" rx="250" ry="16" fill="#BBF7D0"/>' +
+    // 远排作物（矮、淡，制造纵深）
+    stalk(24, 138, 30, 0.55, '#4D7C0F', 0.2) + stalk(70, 138, 34, 0.55, '#4D7C0F', 0.8) +
+    stalk(118, 140, 31, 0.55, '#4D7C0F', 1.4) + stalk(166, 138, 35, 0.55, '#4D7C0F', 0.5) +
+    stalk(214, 140, 32, 0.55, '#4D7C0F', 1.1) + stalk(262, 138, 34, 0.55, '#4D7C0F', 1.7) +
+    stalk(304, 140, 30, 0.55, '#4D7C0F', 0.9) +
+    '<ellipse cx="160" cy="160" rx="250" ry="22" fill="#A3E635"/>' +
+    // 中排
+    stalk(44, 186, 52, 0.8, '#65A30D', 0.4) + stalk(112, 188, 56, 0.8, '#65A30D', 1.2) +
+    stalk(196, 186, 54, 0.8, '#65A30D', 0.7) + stalk(272, 188, 50, 0.8, '#65A30D', 1.6) +
+    '<ellipse cx="160" cy="206" rx="250" ry="26" fill="#84CC16"/>' +
+    // 近排（大、深，压住画面下沿）
+    stalk(18, 240, 76, 1.1, '#4D7C0F', 0) + stalk(150, 244, 72, 1.1, '#4D7C0F', 1) +
+    stalk(302, 240, 78, 1.1, '#4D7C0F', 0.6) +
+    '<ellipse cx="160" cy="248" rx="250" ry="24" fill="#65A30D" opacity="0.85"/>' +
+    butterfly(240, 78, 0.85, accent, 0.6) +
+    `<circle cx="130" cy="66" r="2.2" fill="#fff" opacity="0.7">${twinkle(2.4, 0.4)}</circle>`;
+}
+
+/** 厨房：木桌 + 窗光 + 碗盘，做饭与吃饭题材 */
+function kitchen(accent) {
+  return sky('#FFF7ED', '#FFEDD5') +
+    // 窗与窗外阳光
+    '<rect x="204" y="20" width="84" height="66" rx="6" fill="#B4835B"/>' +
+    '<rect x="210" y="26" width="72" height="54" rx="3" fill="#BFDBFE"/>' +
+    sun(240, 44, 9) +
+    cloud(266, 60, 0.4, 0.85, 6, 8, 0) +
+    '<line x1="246" y1="26" x2="246" y2="80" stroke="#B4835B" stroke-width="3"/>' +
+    '<line x1="210" y1="53" x2="282" y2="53" stroke="#B4835B" stroke-width="3"/>' +
+    // 洒进来的光柱
+    `<polygon points="206,86 288,86 320,164 240,164" fill="#FDE68A" opacity="0.2">${breathe(0.1, 0.28, 4.4)}</polygon>` +
+    // 吊柜与调料罐
+    '<rect x="16" y="18" width="106" height="11" rx="3" fill="#C89B6C"/>' +
+    '<rect x="28" y="31" width="16" height="21" rx="3" fill="#FCA5A5"/><rect x="28" y="31" width="16" height="7" rx="3" fill="#F87171"/>' +
+    `<rect x="52" y="29" width="16" height="23" rx="3" fill="${accent}" opacity="0.8"/>` +
+    '<rect x="76" y="34" width="16" height="18" rx="3" fill="#93C5FD"/>' +
+    '<rect x="98" y="31" width="14" height="21" rx="3" fill="#A3E635" opacity="0.85"/>' +
+    // 挂着的锅铲
+    '<line x1="150" y1="16" x2="150" y2="52" stroke="#9CA3AF" stroke-width="3" stroke-linecap="round"/>' +
+    '<ellipse cx="150" cy="58" rx="9" ry="7" fill="#9CA3AF"/>' +
+    '<line x1="176" y1="16" x2="176" y2="48" stroke="#9CA3AF" stroke-width="3" stroke-linecap="round"/>' +
+    '<path d="M168 48 L184 48 L180 62 L172 62 Z" fill="#B0B7C3"/>' +
+    // 台面（横贯画幅）
+    '<rect y="164" width="320" height="86" fill="#E8C9A0"/>' +
+    '<rect y="160" width="320" height="6" rx="3" fill="#D4A574"/>' +
+    '<rect y="184" width="320" height="2" fill="#D9B285" opacity="0.7"/>' +
+    '<rect y="214" width="320" height="2" fill="#D9B285" opacity="0.55"/>' +
+    // 木砧板
+    '<rect x="24" y="176" width="94" height="34" rx="7" fill="#C89B6C"/>' +
+    '<rect x="30" y="182" width="82" height="22" rx="5" fill="#D9B285"/>' +
+    '<circle cx="112" cy="180" r="3.6" fill="#B4835B"/>' +
+    // 沙拉碗与冒尖的菜
+    '<ellipse cx="222" cy="196" rx="46" ry="13" fill="#F3F4F6"/>' +
+    '<path d="M176 196 Q222 234 268 196 Z" fill="#E5E7EB"/>' +
+    `<circle cx="204" cy="190" r="9" fill="#4ADE80"/>` +
+    `<circle cx="222" cy="186" r="10" fill="${accent}"/>` +
+    '<circle cx="240" cy="191" r="8.5" fill="#FB923C"/>' +
+    '<circle cx="213" cy="181" r="6" fill="#A3E635"/>' +
+    '<circle cx="232" cy="180" r="5.5" fill="#22C55E"/>' +
+    // 小碟与光点
+    '<ellipse cx="70" cy="228" rx="30" ry="9" fill="#F3F4F6"/>' +
+    '<ellipse cx="70" cy="226" rx="20" ry="5.5" fill="#E5E7EB"/>' +
+    `<circle cx="140" cy="146" r="2.4" fill="${accent}" opacity="0.6">${twinkle(2.6, 0.7)}</circle>` +
+    `<circle cx="296" cy="132" r="2" fill="#FDE68A" opacity="0.7">${twinkle(2.2, 1.3)}</circle>`;
+}
+
 const TEMPLATES = {
   meadow: meadow,
   forest: forest,
@@ -342,6 +476,9 @@ const TEMPLATES = {
   rain: rain,
   snow: snow,
   seaside: seaside,
+  garden: garden,
+  field: field,
+  kitchen: kitchen,
 };
 
 // ---------- 输出 ----------
