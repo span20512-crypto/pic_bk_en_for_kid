@@ -24,8 +24,11 @@ const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 
-const { ttsKey, splitSentences, normalize } = require('../miniprogram/utils/tts-key.js');
-const { bookList } = require('../miniprogram/pages/books/data.js');
+// 直接复用客户端那三个模块，不在这里抄第二份实现 ——
+// 散列一旦两处不一致，生成出来的文件名客户端就拼不出来，而且静态查不出。
+const { ttsKey, normalize } = require('../miniprogram/core/hash.js');
+const { splitSentences } = require('../miniprogram/core/cadence.js');
+const { bookList } = require('../miniprogram/content/catalog.js');
 
 const OUT_DIR = path.join(ROOT, 'assets', 'audio');
 const VOICE = 'en-US-AnaNeural';

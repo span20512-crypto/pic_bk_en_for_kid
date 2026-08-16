@@ -1,3 +1,8 @@
 {
-  "navigationBarTitleText": "绘本馆"
+  "navigationBarTitleText": "绘本馆",
+  "usingComponents": {
+    "book-card": "../../components/book-card/index",
+    "story-stage": "../../components/story-stage/index",
+    "gloss-bar": "../../components/gloss-bar/index"
+  }
 }

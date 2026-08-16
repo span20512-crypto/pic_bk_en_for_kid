@@ -1,0 +1,46 @@
+<!--
+  画面舞台。层序自下而上：矢量场景 → 视频 → Emoji 拼画 → 下载徽章 → 字幕条。
+  showVideo 同时要求「是当前页」和「视频已就位」，两个条件缺一不可。
+-->
+<view class="stage">
+  <!-- 永远铺底的矢量场景：视频没来、来不了，画面都不会空 -->
+  <image class="scene" src="{{page.sceneSrc}}" mode="scaleToFill"></image>
+
+  <video
+    wx:if="{{active && videoSrc}}"
+    class="film"
+    src="{{videoSrc}}"
+    autoplay
+    loop
+    muted
+    object-fit="cover"
+    controls="{{false}}"
+    show-center-play-btn="{{false}}"
+    show-fullscreen-btn="{{false}}"
+    show-play-btn="{{false}}"
+    show-progress="{{false}}"
+    enable-progress-gesture="{{false}}"
+    binderror="onVideoError"
+  ></video>
+
+  <!-- 视频未就位时的 Emoji 拼画（主体居中偏上，避开底部字幕条） -->
+  <block wx:if="{{!(active && videoSrc)}}">
+    <text class="decor decor-l">{{page.decor[0]}}</text>
+    <text class="hero">{{page.emoji}}</text>
+    <text class="decor decor-r">{{page.decor[1]}}</text>
+  </block>
+
+  <!-- 真实下载进度，让等待有反馈（PRD §3.3） -->
+  <view wx:if="{{active && loading}}" class="badge">
+    <text class="badge-txt">🎬 视频加载中 {{percent > 0 ? percent + '%' : '...'}}</text>
+  </view>
+
+  <story-caption
+    tokens="{{page.tokens}}"
+    cn="{{page.cn}}"
+    playing="{{active && playing}}"
+    si="{{si}}"
+    wi="{{wi}}"
+    bind:tapword="onTapWord"
+  />
+</view>

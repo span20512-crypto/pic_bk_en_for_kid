@@ -1,0 +1,16 @@
+<view wx:if="{{gloss}}" class="bar fade-in">
+  <view class="speak" hover-class="speak-press" hover-stay-time="80" bindtap="onPlay">
+    <text class="speak-icon">🔊</text>
+  </view>
+
+  <view class="body">
+    <text class="word">{{gloss.word}}</text>
+    <text class="cn">{{gloss.cn}}</text>
+  </view>
+
+  <view wx:if="{{justSaved}}" class="saved"><text class="saved-txt">已收进生词本</text></view>
+
+  <view class="close" hover-class="close-press" hover-stay-time="80" bindtap="onClose">
+    <text class="close-icon">✕</text>
+  </view>
+</view>

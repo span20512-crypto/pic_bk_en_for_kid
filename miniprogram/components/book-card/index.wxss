@@ -1,0 +1,125 @@
+.card {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: var(--r-lg, 22px);
+  background: var(--surface, #FFFFFF);
+  box-shadow: var(--shadow-card, 0 2px 10px rgba(120, 100, 60, 0.08));
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card-press {
+  transform: scale(0.98);
+  box-shadow: 0 1px 5px rgba(120, 100, 60, 0.1);
+}
+
+/* 未上线：整卡压暗，但保持同样的高度与间距，避免列表跳动 */
+.card-soon { opacity: 0.58; }
+
+.cover {
+  position: relative;
+  flex-shrink: 0;
+  width: 68px;
+  height: 90px;
+  border-radius: var(--r-md, 16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cover-emoji {
+  font-size: 38px;
+  line-height: 1.2;
+}
+
+/* 读完角标 */
+.done {
+  position: absolute;
+  right: -5px;
+  top: -5px;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-pill, 999px);
+  background: var(--level1, #22C55E);
+  color: #FFFFFF;
+  font-size: 13px;
+  line-height: 22px;
+  text-align: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+
+.meta {
+  flex: 1;
+  min-width: 0;
+  padding: 0 10px;
+}
+
+.title {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink, #1F2937);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtitle {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--ink-soft, #6B7280);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.level {
+  padding: 3px 10px;
+  border-radius: var(--r-pill, 999px);
+  margin-right: 8px;
+}
+
+.level-1 { background: var(--level1-bg, #ECFDF5); }
+.level-2 { background: var(--level2-bg, #FEF3C7); }
+
+.level-txt {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.level-1 .level-txt { color: var(--level1, #22C55E); }
+.level-2 .level-txt { color: var(--level2, #FBBF24); }
+
+.progress {
+  font-size: 12px;
+  color: var(--ink-soft, #6B7280);
+}
+
+.progress-done { color: var(--level1, #22C55E); }
+
+.chevron {
+  flex-shrink: 0;
+  font-size: 22px;
+  color: #D6CDBB;
+  padding: 0 4px;
+}
+
+.soon-chip {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: var(--r-pill, 999px);
+  background: #F3F0E8;
+}
+
+.soon-txt {
+  font-size: 11px;
+  color: var(--ink-faint, #9CA3AF);
+}

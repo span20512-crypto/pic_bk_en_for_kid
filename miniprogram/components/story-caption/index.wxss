@@ -1,0 +1,68 @@
+/*
+ * 字幕样式。颜色都带 fallback 值：组件样式默认隔离，虽然 CSS 自定义属性能从
+ * page 继承下来，但写死一份兜底可以让组件单独放到任何页面里都不掉色。
+ */
+
+.bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 20px 12px 10px;
+  /* 自下而上的遮罩：上缘完全透明，不切断画面 */
+  background: linear-gradient(
+    180deg,
+    rgba(15, 23, 42, 0) 0%,
+    rgba(15, 23, 42, 0.68) 38%,
+    rgba(15, 23, 42, 0.86) 100%
+  );
+}
+
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+}
+
+/* 朗读中整条字幕轻微呼吸（PRD §3.5） */
+.line-live { animation: bk-breathe 0.6s ease infinite alternate; }
+
+.tk {
+  margin: 0 2px;
+  font-size: 17px;
+  line-height: 1.5;
+  font-weight: 700;
+  color: #FFFFFF;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
+  transition: color 0.18s ease, opacity 0.18s ease, transform 0.18s ease;
+}
+
+/* 生词：#7DD3FC 下划线。与高亮态互不覆盖 —— 高亮只改 color，下划线留着 */
+.tk-gloss {
+  color: var(--gloss, #7DD3FC);
+  text-decoration: underline;
+  /* 加大纵向热区，让小手指点得中（PRD §6 无障碍） */
+  padding: 5px 1px;
+}
+
+/* 当前词：主色 + 微缩放 */
+.tk-now {
+  color: var(--accent, #FF8C42);
+  transform: scale(1.08);
+}
+
+/* 非当前句压暗 */
+.tk-dim { opacity: 0.42; }
+
+.cn {
+  display: block;
+  margin-top: 3px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  /* 中文延迟淡入（PRD §3.5：200ms） */
+  animation: bk-fade-in 0.3s ease 0.2s both;
+}

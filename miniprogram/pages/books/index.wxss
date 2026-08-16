@@ -1,352 +1,288 @@
-@import "../../styles/utils.wxss";
-
 /* ==================== 列表 ==================== */
 
-.list-wrap {
-  padding: 12px 16px 32px;
+.shelf {
+  height: 100vh;
+  padding: 0 16px;
+  box-sizing: border-box;
 }
 
-.banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%);
-  margin-bottom: 8px;
+.hero {
+  padding: 14px 4px 10px;
 }
-.banner-emoji { font-size: 34px; }
-.banner-title { font-size: 17px; font-weight: 700; color: #065F46; }
-.banner-sub { font-size: 12px; color: #047857; margin-top: 2px; }
 
-/* 系列标题行常驻吸顶（PRD §3.1） */
-.series-head {
+.hero-title {
+  display: block;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.hero-sub {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.group {
+  margin-bottom: 6px;
+}
+
+/*
+ * 系列标题吸顶（PRD §3.1）。背景必须是不透明的奶油白 —— sticky 元素下面
+ * 会有卡片滑过，半透明背景会把卡片透出来，读起来像重影。
+ */
+.group-head {
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 5;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 4px 8px;
-  background: #FFFDF7;
+  padding: 10px 4px 8px;
+  background: var(--bg);
 }
-.series-emoji { font-size: 22px; }
-.series-title { font-size: 16px; font-weight: 700; }
-.series-sub { font-size: 11px; color: #9CA3AF; margin-top: 1px; }
-.series-count { font-size: 12px; color: #34D399; font-weight: 600; }
 
-.book-card {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  margin-bottom: 10px;
-  background: #FFFFFF;
-  border-radius: 16px;
-  box-shadow: 0 4px 14px rgba(31, 41, 55, 0.06);
-  transition: transform 0.12s ease;
+.group-emoji {
+  font-size: 20px;
+  line-height: 1.2;
+  margin-right: 8px;
 }
-.book-card-locked { opacity: 0.6; }
 
-.cover {
-  width: 84px;
-  height: 84px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.group-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.group-title {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.group-sub {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.group-count {
   flex-shrink: 0;
-}
-.cover-emoji { font-size: 40px; }
-
-.btitle { font-size: 15px; font-weight: 700; margin-right: 6px; }
-.bsub { font-size: 12px; color: #6B7280; margin-top: 4px; }
-.bprog { font-size: 12px; color: #9CA3AF; margin-top: 6px; }
-.bprog-done { color: #22C55E; font-weight: 600; }
-
-.done-mark {
-  position: absolute;
-  top: 10px;
-  right: 12px;
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  background: #22C55E;
-  color: #FFFFFF;
-  font-size: 13px;
-  text-align: center;
-  line-height: 20px;
-}
-
-.list-foot {
-  text-align: center;
-  color: #9CA3AF;
   font-size: 12px;
-  padding: 16px 0 8px;
+  color: var(--ink-soft);
+}
+
+.group-count-done { color: var(--level1); }
+
+.foot {
+  padding: 12px 0 28px;
+  text-align: center;
+}
+
+.foot-txt {
+  font-size: 12px;
+  color: var(--ink-faint);
 }
 
 /* ==================== 阅读器 ==================== */
 
-.reader-wrap {
-  min-height: 100vh;
+.reader {
   display: flex;
   flex-direction: column;
-  background: #FFFDF7;
+  align-items: center;
+  min-height: 100vh;
+  padding: 8px 0 28px;
+  box-sizing: border-box;
 }
 
-.reader-head {
+.topbar {
   display: flex;
   align-items: center;
-  padding: 10px 16px;
-}
-.back-btn {
-  font-size: 15px;
-  color: #34D399;
-  font-weight: 600;
-  padding: 6px 10px 6px 0;
-}
-.reader-title { font-size: 15px; font-weight: 700; }
-.reader-sub { font-size: 11px; color: #9CA3AF; margin-top: 1px; }
-.page-no { font-size: 13px; color: #6B7280; min-width: 36px; text-align: right; }
-
-/* Swiper 高度 300px，视频框 320×250（PRD §3.3） */
-.reader-swiper {
-  height: 300px;
-}
-.stage-outer {
-  height: 300px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.stage {
-  position: relative;
-  width: 320px;
-  height: 250px;
-  border-radius: 20px;
-  overflow: hidden;
-  background: #E5E7EB;
-}
-.stage-video {
-  width: 320px;
-  height: 250px;
-}
-
-/* ---- 降级画面：矢量场景模板 + Emoji 拼画 ---- */
-.fallback {
-  position: absolute;
-  left: 0;
-  top: 0;
   width: 100%;
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+
+.back {
+  width: 84px;
+  height: 44px;          /* 44px 热区（PRD §6 无障碍） */
+  display: flex;
+  align-items: center;
+}
+
+.back-ghost { visibility: hidden; }  /* 右侧等宽占位，让标题真正居中 */
+
+.back-press { opacity: 0.5; }
+
+.back-txt {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.topbar-title {
+  flex: 1;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.counter {
+  margin: 2px 0 8px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.dots {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  margin: 0 3px;
+  border-radius: var(--r-pill);
+  background: #E3DCCC;
+  transition: width 0.25s ease, background 0.25s ease;
+}
+
+.dot-passed { background: var(--level1); }
+
+.dot-now {
+  width: 18px;
+  background: var(--primary);
+}
+
+.deck {
+  width: 100%;
+  height: 262px;   /* 画面 250 + 上下呼吸 */
+}
+
+.slide {
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.blob {
-  position: absolute;
-  width: 150px;
-  height: 150px;
-  border-radius: 999px;
-  opacity: 0.25;
-  filter: blur(2px);
-}
-.fb-main { font-size: 76px; z-index: 2; }
-.fb-decor { position: absolute; font-size: 30px; z-index: 2; }
-.fb-decor-tl { left: 22px; top: 20px; }
-.fb-decor-br { right: 24px; bottom: 64px; }
 
-/* 场景模板（DPR 无关的分层渐变场景） */
-.scene-meadow { background: linear-gradient(180deg, #BAE6FD 0%, #E0F2FE 45%, #86EFAC 46%, #4ADE80 100%); }
-.scene-river  { background: linear-gradient(180deg, #BAE6FD 0%, #E0F2FE 40%, #7DD3FC 41%, #38BDF8 100%); }
-.scene-rain   { background: linear-gradient(180deg, #94A3B8 0%, #CBD5E1 50%, #64748B 100%); }
-.scene-forest { background: linear-gradient(180deg, #A7F3D0 0%, #D1FAE5 40%, #34D399 41%, #059669 100%); }
-.scene-night  { background: linear-gradient(180deg, #1E293B 0%, #334155 60%, #0F172A 100%); }
-.scene-burrow { background: linear-gradient(180deg, #FDE68A 0%, #FEF3C7 40%, #D97706 41%, #92400E 100%); }
-.scene-snow   { background: linear-gradient(180deg, #E0F2FE 0%, #F8FAFC 50%, #E2E8F0 100%); }
-.scene-seaside{ background: linear-gradient(180deg, #BAE6FD 0%, #E0F2FE 40%, #2DD4BF 41%, #0D9488 100%); }
-
-.video-loading {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 5;
-  font-size: 11px;
-  color: #FFFFFF;
-  background: rgba(31, 41, 55, 0.55);
-  padding: 3px 8px;
-  border-radius: 999px;
-}
-
-/* ---- 视频内双语字幕（PRD §3.4 / §3.5） ---- */
-.subs {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 4;
-  padding: 26px 12px 10px;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0) 0%, rgba(15, 23, 42, 0.62) 34%, rgba(15, 23, 42, 0.82) 100%);
-}
-.subs-breathing {
-  animation: breathe 1.6s ease-in-out infinite;
-}
-@keyframes breathe {
-  0%   { opacity: 0.7; }
-  50%  { opacity: 1; }
-  100% { opacity: 0.7; }
-}
-
-.sub-en { display: flex; flex-direction: column; }
-.sent {
-  display: flex;
-  flex-wrap: wrap;
-  transition: opacity 0.25s ease;
-}
-.sent-dim { opacity: 0.4; }
-
-/* 生词点击热区 ≥ 44×44（PRD §6）：用行高 + 内边距撑起 */
-.word {
-  font-size: 21px;
-  font-weight: 700;
-  color: #FFFFFF;
-  margin-right: 7px;
-  line-height: 30px;
-  padding: 2px 0;
-  transition: color 0.12s ease, transform 0.12s ease;
-}
-.word-hot {
-  color: #34D399;
-  transform: scale(1.08);
-}
-.word-gloss {
-  text-decoration: underline;
-  text-decoration-color: #7DD3FC;
-  text-decoration-thickness: 3px;
-  text-underline-offset: 4px;
-}
-
-.sub-cn {
-  font-size: 14px;
-  color: #E5E7EB;
-  margin-top: 5px;
-  opacity: 0;
-  transition: opacity 0.35s ease;
-}
-.sub-cn-show { opacity: 1; }
-
-/* ---- The End ---- */
-.end-page {
-  height: 300px;
+/* The End 庆祝页 */
+.curtain {
+  width: 320px;
+  height: 250px;
+  border-radius: var(--r-lg);
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  box-shadow: var(--shadow-lift);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-}
-.end-emoji { font-size: 56px; }
-.end-title { font-size: 26px; font-weight: 800; color: #FF8C42; }
-.end-sub { font-size: 13px; color: #6B7280; margin-bottom: 8px; }
-.end-btn {
-  width: 180px;
-  text-align: center;
-  padding: 10px 0;
-  border-radius: 999px;
-  font-size: 15px;
-  font-weight: 600;
-}
-.end-btn-ghost { color: #6B7280; background: #F3F4F6; }
-
-/* ---- 进度点 ---- */
-.dots {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 12px 0 4px;
-}
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: #E5E7EB;
-  transition: all 0.2s ease;
-}
-.dot-on { background: #34D399; width: 18px; }
-.dot-star {
-  width: auto;
-  height: auto;
-  background: none;
-  font-size: 12px;
-  color: #E5E7EB;
-  line-height: 12px;
-}
-.dot-star.dot-on { color: #FBBF24; }
-
-/* ---- 控制条 ---- */
-.controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 10px 16px 24px;
-}
-.ctl-btn {
-  padding: 10px 18px;
-  border-radius: 999px;
-  background: #F3F4F6;
-  color: #374151;
-  font-size: 14px;
-  font-weight: 600;
-}
-.ctl-disabled { opacity: 0.4; }
-.play-btn {
-  padding: 12px 30px;
-  border-radius: 999px;
-  background: #34D399;
-  color: #FFFFFF;
-  font-size: 16px;
-  font-weight: 700;
-  box-shadow: 0 6px 16px rgba(52, 211, 153, 0.35);
-  transition: background 0.2s ease;
-}
-/* 播放中转为强调橙（PRD §3.4） */
-.play-btn-on {
-  background: #FF8C42;
-  box-shadow: 0 6px 16px rgba(255, 140, 66, 0.35);
 }
 
-/* ---- 生词释义条 ---- */
-.gloss-bar {
-  position: fixed;
-  left: 16px;
-  right: 16px;
-  bottom: 24px;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 16px;
+.curtain-emoji {
+  font-size: 58px;
+  line-height: 1.2;
+  animation: bk-bounce 1.8s ease-in-out infinite;
 }
-.gloss-word { font-size: 20px; font-weight: 800; color: #1F2937; }
-.gloss-cn { font-size: 13px; color: #6B7280; margin-top: 2px; }
-.gloss-play {
+
+.curtain-title {
+  margin-top: 10px;
   font-size: 22px;
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #ECFDF5;
-  border-radius: 999px;
+  font-weight: 800;
+  color: #92400E;
 }
-.gloss-close {
-  font-size: 15px;
-  color: #9CA3AF;
-  width: 44px;
-  height: 44px;
+
+.curtain-sub {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #B45309;
+}
+
+.hint {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+/* ---- 操作按钮 ---- */
+
+.actions {
+  display: flex;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.btn {
+  height: 46px;         /* ≥ 44px 热区 */
+  padding: 0 28px;
+  margin: 0 6px;
+  border-radius: var(--r-pill);
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.15s ease;
+}
+
+.btn-press { transform: scale(0.95); }
+
+.btn-play {
+  margin-top: 14px;
+  padding: 0 40px;
+  background: var(--primary);
+  box-shadow: 0 4px 14px rgba(52, 211, 153, 0.35);
+}
+
+/* 播放中转强调橙（PRD §3.4） */
+.btn-playing {
+  background: var(--accent);
+  box-shadow: 0 4px 14px rgba(255, 140, 66, 0.35);
+}
+
+.btn-primary {
+  background: var(--primary);
+  box-shadow: 0 4px 14px rgba(52, 211, 153, 0.35);
+}
+
+.btn-ghost {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.btn-txt {
+  font-size: 16px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.btn-txt-dark { color: var(--ink-soft); }
+
+.pager {
+  display: flex;
+  align-items: center;
+  width: 320px;
+  margin-top: 12px;
+}
+
+.page-btn {
+  flex: 1;
+  height: 44px;
+  margin: 0 5px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-btn-off { opacity: 0.4; }
+
+.page-txt {
+  font-size: 14px;
+  color: var(--ink-soft);
 }

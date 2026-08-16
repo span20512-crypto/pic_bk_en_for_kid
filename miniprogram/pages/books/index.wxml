@@ -1,158 +1,134 @@
-<!-- ==================== 列表模式 ==================== -->
-<view wx:if="{{mode === 'list'}}" class="list-wrap">
-  <view class="banner">
-    <text class="banner-emoji">📚</text>
-    <view class="flex-col">
-      <text class="banner-title">一座随身的小动物绘本馆</text>
-      <text class="banner-sub">看动画 · 听故事 · 学英语</text>
-    </view>
+<!-- 绘本馆：列表与阅读器共用一页，mode 决定渲染哪一支 -->
+
+<!-- ==================== 列表 ==================== -->
+<scroll-view
+  wx:if="{{mode === 'list'}}"
+  class="shelf"
+  scroll-y
+  enable-back-to-top
+  scroll-top="{{scrollTop}}"
+  bindscroll="onListScroll"
+>
+  <view class="hero">
+    <text class="hero-title">英语绘本馆</text>
+    <text class="hero-sub">看动画 · 听旁白 · 读字幕</text>
   </view>
 
-  <view wx:for="{{groups}}" wx:key="key" wx:for-item="grp" class="series">
-    <!-- 系列标题行常驻吸顶（PRD §3.1） -->
-    <view class="series-head">
-      <text class="series-emoji">{{grp.meta.emoji}}</text>
-      <view class="flex-col flex-1">
-        <text class="series-title">{{grp.meta.title}}</text>
-        <text class="series-sub">{{grp.meta.subtitle}}</text>
+  <view wx:for="{{groups}}" wx:key="series" wx:for-item="group" class="group">
+    <!-- 系列标题吸顶，滚动中始终看得见当前在哪个系列（PRD §3.1） -->
+    <view class="group-head">
+      <text class="group-emoji">{{group.emoji}}</text>
+      <view class="group-text">
+        <text class="group-title">{{group.title}}</text>
+        <text class="group-sub">{{group.subtitle}}</text>
       </view>
-      <text class="series-count">{{grp.doneCount}}/{{grp.total}} 本</text>
+      <text class="group-count{{group.allRead ? ' group-count-done' : ''}}">{{group.readCount}}/{{group.total}} 本</text>
     </view>
 
-    <view
-      wx:for="{{grp.books}}"
+    <book-card
+      wx:for="{{group.books}}"
       wx:key="id"
-      class="book-card {{item.released ? '' : 'book-card-locked'}}"
-      hover-class="press"
-      hover-stay-time="80"
-      bindtap="openBook"
-      data-id="{{item.id}}"
-    >
-      <view class="cover" style="background:{{item.cover}}">
-        <text class="cover-emoji">{{item.emoji}}</text>
-      </view>
-      <view class="info flex-col flex-1">
-        <view class="flex items-center">
-          <text class="btitle flex-1">{{item.title}}</text>
-          <text class="badge-level badge-level-{{item.level}}">Lv{{item.level}}</text>
-        </view>
-        <text class="bsub">{{item.titleCn}} · {{item.tag}}</text>
-        <text class="bprog {{item.done ? 'bprog-done' : ''}}">{{item.progressText}}</text>
-      </view>
-      <text wx:if="{{item.done}}" class="done-mark">✓</text>
-    </view>
+      book="{{item}}"
+      bind:open="onOpenBook"
+    />
   </view>
 
-  <view class="list-foot">🌱 更多绘本正在赶来的路上…</view>
-</view>
+  <view class="foot">
+    <text class="foot-txt">更多绘本正在录制中 🎬</text>
+  </view>
+</scroll-view>
 
-<!-- ==================== 阅读器模式（同页钻取，PRD §3.3） ==================== -->
-<view wx:else class="reader-wrap">
-  <view class="reader-head">
-    <view class="back-btn" hover-class="press-dim" bindtap="closeReader">‹ 书架</view>
-    <view class="flex-col items-center flex-1">
-      <text class="reader-title">{{book.title}}</text>
-      <text class="reader-sub">{{book.titleCn}}</text>
+<!-- ==================== 阅读器 ==================== -->
+<view wx:else class="reader fade-in">
+  <view class="topbar">
+    <view class="back" hover-class="back-press" hover-stay-time="80" bindtap="exitReader">
+      <text class="back-txt">← 绘本馆</text>
     </view>
-    <text class="page-no">{{current < pageCount ? (current + 1) + '/' + pageCount : '🎉'}}</text>
+    <text class="topbar-title">{{book.titleCn}}</text>
+    <view class="back back-ghost"></view>
   </view>
 
-  <swiper class="reader-swiper" current="{{current}}" bindchange="onSwiperChange" duration="280">
-    <swiper-item wx:for="{{book.pages}}" wx:key="index">
-      <view class="stage-outer">
-        <view class="stage scene-{{item.scene}}">
-          <!-- 仅当前页挂载 video（PRD §3.7） -->
-          <video
-            wx:if="{{index === current && video.ready && !video.failed}}"
-            class="stage-video"
-            src="{{video.src}}"
-            autoplay
-            loop
-            muted
-            controls="{{false}}"
-            show-center-play-btn="{{false}}"
-            object-fit="cover"
-          />
-          <!-- 降级画面：矢量场景 + Emoji 拼画（PRD §3.3） -->
-          <view wx:else class="fallback">
-            <view class="blob" style="background:{{item.accent}}"></view>
-            <text class="fb-main">{{item.emoji}}</text>
-            <text class="fb-decor fb-decor-tl">{{item.decor[0]}}</text>
-            <text class="fb-decor fb-decor-br">{{item.decor[1]}}</text>
-          </view>
+  <text class="counter">{{atEnd ? '读完啦！' : '第 ' + (pageIndex + 1) + ' / ' + book.total + ' 页'}}</text>
 
-          <view
-            wx:if="{{index === current && video.loading && !video.ready}}"
-            class="video-loading"
-          >🎬 视频加载中 {{video.progress}}%</view>
+  <view class="dots">
+    <view
+      wx:for="{{dots}}"
+      wx:key="index"
+      class="dot{{item.wide ? ' dot-now' : ''}}{{item.passed ? ' dot-passed' : ''}}"
+    ></view>
+  </view>
 
-          <!-- 双语字幕叠加在视频画面内部（PRD §3.4 / §3.5） -->
-          <view wx:if="{{index === current}}" class="subs {{reader.playing ? 'subs-breathing' : ''}}">
-            <view class="sub-en">
-              <view
-                wx:for="{{reader.sentences}}"
-                wx:for-item="s"
-                wx:for-index="si"
-                wx:key="si"
-                class="sent {{reader.playing && si !== reader.sentIdx ? 'sent-dim' : ''}}"
-              >
-                <text
-                  wx:for="{{s.words}}"
-                  wx:for-item="w"
-                  wx:for-index="wi"
-                  wx:key="wi"
-                  class="word {{w.g > -1 ? 'word-gloss' : ''}} {{si === reader.sentIdx && wi === reader.wordIdx ? 'word-hot' : ''}}"
-                  data-g="{{w.g}}"
-                  catchtap="onWordTap"
-                >{{w.t}}</text>
-              </view>
-            </view>
-            <view class="sub-cn {{reader.showCn ? 'sub-cn-show' : ''}}">{{item.cn}}</view>
-          </view>
-        </view>
+  <swiper class="deck" current="{{pageIndex}}" bindchange="onSwiperChange">
+    <swiper-item wx:for="{{pages}}" wx:key="index" wx:for-item="p" wx:for-index="pi">
+      <view class="slide">
+        <story-stage
+          page="{{p}}"
+          active="{{pi === pageIndex}}"
+          video-src="{{videoSrc}}"
+          loading="{{loading}}"
+          percent="{{percent}}"
+          playing="{{playing}}"
+          si="{{si}}"
+          wi="{{wi}}"
+          bind:tapword="onTapWord"
+          bind:videoerror="onVideoError"
+        />
       </view>
     </swiper-item>
 
-    <!-- The End 庆祝页（PRD §3.3） -->
+    <!-- The End 庆祝页 -->
     <swiper-item>
-      <view class="end-page">
-        <text class="end-emoji">🎉</text>
-        <text class="end-title">The End</text>
-        <text class="end-sub">你读完了《{{book.titleCn}}》，真棒！</text>
-        <view class="end-btn bg-green c-white" hover-class="press" bindtap="restartBook">再读一遍</view>
-        <view class="end-btn end-btn-ghost" hover-class="press-dim" bindtap="closeReader">返回书架</view>
+      <view class="slide">
+        <view class="curtain">
+          <text class="curtain-emoji">🎉</text>
+          <text class="curtain-title">The End</text>
+          <text class="curtain-sub">读完了《{{book.titleCn}}》，太棒啦！</text>
+        </view>
       </view>
     </swiper-item>
   </swiper>
 
-  <!-- 页码进度点 -->
-  <view class="dots">
-    <view
-      wx:for="{{book.pages}}"
-      wx:key="index"
-      class="dot {{index === current ? 'dot-on' : ''}}"
-    ></view>
-    <view class="dot dot-star {{current === pageCount ? 'dot-on' : ''}}">★</view>
-  </view>
+  <gloss-bar
+    gloss="{{gloss}}"
+    just-saved="{{justSaved}}"
+    bind:play="onPlayGloss"
+    bind:close="onCloseGloss"
+  />
 
-  <!-- 控制条 -->
-  <view class="controls" wx:if="{{current < pageCount}}">
-    <view class="ctl-btn {{current === 0 ? 'ctl-disabled' : ''}}" hover-class="press-dim" bindtap="prevPage">上一页</view>
-    <view
-      class="play-btn {{reader.playing ? 'play-btn-on' : ''}}"
-      hover-class="press"
-      bindtap="togglePlay"
-    >{{reader.playing ? '播放中…' : '▶ 播放绘本'}}</view>
-    <view class="ctl-btn" hover-class="press-dim" bindtap="nextPage">下一页</view>
-  </view>
+  <text wx:if="{{!atEnd && !gloss}}" class="hint">点「播放绘本」听旁白 · 点字幕里带下划线的词查释义</text>
 
-  <!-- 生词释义条（PRD §3.3） -->
-  <view wx:if="{{gloss}}" class="gloss-bar card-base">
-    <view class="flex-col flex-1">
-      <text class="gloss-word">{{gloss.word}}</text>
-      <text class="gloss-cn">{{gloss.cn}}</text>
+  <!-- 操作区 -->
+  <view wx:if="{{atEnd}}" class="actions">
+    <view class="btn btn-primary" hover-class="btn-press" hover-stay-time="80" bindtap="onReadAgain">
+      <text class="btn-txt">🔄 再读一遍</text>
     </view>
-    <view class="gloss-play" hover-class="press-dim" bindtap="glossReplay">🔊</view>
-    <view class="gloss-close" hover-class="press-dim" bindtap="closeGloss">✕</view>
+    <view class="btn btn-ghost" hover-class="btn-press" hover-stay-time="80" bindtap="exitReader">
+      <text class="btn-txt btn-txt-dark">返回绘本馆</text>
+    </view>
   </view>
+
+  <block wx:else>
+    <view
+      class="btn btn-play{{playing ? ' btn-playing' : ''}}"
+      hover-class="btn-press"
+      hover-stay-time="80"
+      bindtap="onTogglePlay"
+    >
+      <text class="btn-txt">{{playing ? '⏸ 播放中…' : '▶️ 播放绘本'}}</text>
+    </view>
+
+    <view class="pager">
+      <view
+        class="page-btn{{pageIndex === 0 ? ' page-btn-off' : ''}}"
+        hover-class="btn-press"
+        hover-stay-time="80"
+        bindtap="onPrev"
+      >
+        <text class="page-txt">← 上一页</text>
+      </view>
+      <view class="page-btn" hover-class="btn-press" hover-stay-time="80" bindtap="onNext">
+        <text class="page-txt">下一页 →</text>
+      </view>
+    </view>
+  </block>
 </view>

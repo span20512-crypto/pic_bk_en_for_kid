@@ -1,0 +1,26 @@
+<view
+  class="card{{book.released ? '' : ' card-soon'}}"
+  hover-class="{{book.released ? 'card-press' : 'none'}}"
+  hover-stay-time="80"
+  bindtap="onTap"
+>
+  <!-- 渐变封面 + 主题 Emoji -->
+  <view class="cover" style="background: {{book.cover}}">
+    <text class="cover-emoji">{{book.emoji}}</text>
+    <view wx:if="{{book.done}}" class="done">✓</view>
+  </view>
+
+  <view class="meta">
+    <text class="title">{{book.title}}</text>
+    <text class="subtitle">{{book.titleCn}} · {{book.tag}}</text>
+    <view class="row">
+      <view class="level level-{{book.level}}">
+        <text class="level-txt">Level {{book.level}}</text>
+      </view>
+      <text class="progress{{book.done ? ' progress-done' : ''}}">{{book.progressText}}</text>
+    </view>
+  </view>
+
+  <text wx:if="{{book.released}}" class="chevron">›</text>
+  <view wx:else class="soon-chip"><text class="soon-txt">敬请期待</text></view>
+</view>

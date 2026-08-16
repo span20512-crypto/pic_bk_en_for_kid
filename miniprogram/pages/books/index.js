@@ -1,353 +1,339 @@
-const { seriesMeta, seriesOrder, bookList } = require('./data');
-const store = require('../../utils/store');
-const tts = require('../../utils/tts');
-const timing = require('../../utils/timing');
-const preloader = require('../../utils/video-preloader');
-const config = require('../../utils/config');
-const { splitSentences } = require('../../utils/tts-key');
+/**
+ * 绘本馆 Tab —— 列表 ⇄ 阅读器（PRD §3.1 / §3.3 / §3.4）
+ *
+ * 列表与阅读器是**同一个页面的两种模式**，不走路由跳转。这样做的直接好处是
+ * 返回列表时不必重建列表、滚动位置天然还原，代价是这个文件要同时管两套状态 ——
+ * 所以画面、字幕、卡片都拆成了自定义组件，这里只留「编排」：
+ * 谁该播、翻到第几页、视频订阅切给谁、生词落哪本。
+ *
+ * 渲染无关的东西一律挂在 this 上而不进 data：拆句结果、视频退订函数、
+ * 失败过的视频 url。它们每次 setData 都要被序列化一遍，白白拖慢翻页。
+ */
+const { seriesMeta, seriesOrder } = require('../../content/series');
+const { bookList, bookById } = require('../../content/catalog');
+const { splitSentences, buildWordTiming } = require('../../core/cadence');
+const { layoutCaption } = require('../../core/lexicon');
+const { buildScene } = require('../../core/scenery');
+const { createNarrator } = require('../../core/narrator');
+const filmstrip = require('../../core/filmstrip');
+const voice = require('../../core/voice');
+const vault = require('../../core/vault');
 
-// 生词标注：把句子 token 与本页生词做匹配（支持 match 词形与多词短语）
-function buildWordViews(sentence, glossary) {
-  const tokens = timing.tokenize(sentence);
-  const norm = tokens.map((t) => t.replace(/[^A-Za-z']/g, '').toLowerCase());
-  const views = tokens.map((t) => ({ t, g: -1 }));
-  (glossary || []).forEach((entry, gi) => {
-    const target = (entry.match || entry.word).toLowerCase().split(/\s+/);
-    for (let i = 0; i + target.length <= norm.length; i++) {
-      let hit = true;
-      for (let j = 0; j < target.length; j++) {
-        if (norm[i + j] !== target[j]) { hit = false; break; }
-      }
-      if (hit) {
-        for (let j = 0; j < target.length; j++) views[i + j].g = gi;
-        break;
-      }
-    }
-  });
-  return views;
+/** 按系列分组：组序取自 seriesOrder，组内保持 catalog 里的书序 */
+function groupBooks() {
+  return seriesOrder
+    .map((key) => ({ key: key, meta: seriesMeta[key], books: bookList.filter((b) => b.series === key) }))
+    .filter((g) => g.meta && g.books.length > 0);
 }
 
 Page({
   data: {
-    mode: 'list', // 'list' | 'reader'，同页钻取无路由跳转（PRD §1.2）
+    mode: 'list',       // 'list' | 'reader'
     groups: [],
-    book: null,
-    current: 0,
-    pageCount: 0,
-    reader: { playing: false, sentIdx: -1, wordIdx: -1, showCn: false, sentences: [] },
-    video: { ready: false, failed: true, src: '', progress: 0, loading: false },
+    scrollTop: 0,
+
+    // ---- 阅读器 ----
+    book: null,         // { id, title, titleCn, total }
+    pages: [],          // 每页的展示模型（场景图 / Emoji / 字幕 token）
+    pageIndex: 0,
+    atEnd: false,
+    dots: [],
+    playing: false,
+    si: -1,             // 正在读第几句
+    wi: -1,             // 高亮到本句第几个词
+    videoSrc: '',
+    loading: false,
+    percent: 0,
     gloss: null,
+    justSaved: false,
   },
 
-  playSeq: 0,
-  curCtl: null,
-  pollTimer: null,
-  gapTimer: null,
-  cnTimer: null,
-  silentTimer: null,
+  // ---------- 非渲染态 ----------
+  narrator: null,
+  current: null,        // 当前绘本（content 里的原始对象）
+  timings: [],          // [页][句] => { tokens, starts }
+  sentences: [],        // [页] => string[]
+  badVideos: null,      // 解码失败过的 url，不再重试挂载
+  unsubVideo: null,
   listScrollTop: 0,
-  savedScrollTop: 0,
+  wordHandle: null,     // 生词发音的音频句柄
 
   onLoad() {
-    this.buildGroups();
+    this.narrator = createNarrator();
+    this.badVideos = {};
+    this.refreshList();
   },
 
   onShow() {
-    if (this.data.mode === 'list') this.buildGroups();
+    // 从生词本 Tab 切回来时进度可能变了（读完的书要显示 ✓）
+    if (this.data.mode === 'list') this.refreshList();
   },
 
+  /** 切走 Tab：立刻停旁白并退回列表（PRD §3.4 资源清理） */
   onHide() {
-    this.stopPlayback();
-    tts.releaseAll();
+    if (this.data.mode === 'reader') this.exitReader();
   },
 
   onUnload() {
-    this.stopPlayback();
-    tts.releaseAll();
+    this.stopAll();
+    if (this.unsubVideo) { this.unsubVideo(); this.unsubVideo = null; }
   },
 
-  onPageScroll(e) {
-    if (this.data.mode === 'list') this.listScrollTop = e.scrollTop;
-  },
+  // ==================== 列表 ====================
 
-  // ---------- 列表 ----------
-
-  buildGroups() {
-    const groups = seriesOrder.map((key) => {
-      const books = bookList.filter((b) => b.series === key).map((b) => {
-        let progressText = '敬请期待';
-        let done = false;
-        if (b.released) {
-          done = store.isDone(b.id);
-          if (done) {
-            progressText = '✓ 已读完';
-          } else {
-            const p = store.getProgress(b.id);
-            progressText = p > 0 ? '读到第 ' + (p + 1) + ' 页' : '还没开始读';
-          }
-        }
-        return {
-          id: b.id, title: b.title, titleCn: b.titleCn, tag: b.tag,
-          emoji: b.emoji, cover: b.cover, level: b.level,
-          released: b.released, progressText, done,
-        };
-      });
-      const doneCount = books.filter((x) => x.done).length;
-      return { key, meta: seriesMeta[key], books, doneCount, total: books.length };
+  refreshList() {
+    const groups = groupBooks().map((g) => {
+      const cards = g.books.map((b) => this.toCardModel(b));
+      const readCount = cards.filter((c) => c.done).length;
+      return {
+        series: g.key,
+        title: g.meta.title,
+        subtitle: g.meta.subtitle,
+        emoji: g.meta.emoji,
+        readCount: readCount,
+        total: cards.length,
+        allRead: readCount === cards.length,
+        books: cards,
+      };
     });
-    this.setData({ groups });
+    this.setData({ groups: groups });
   },
 
-  openBook(e) {
-    const id = e.currentTarget.dataset.id;
-    const book = bookList.find((b) => b.id === id);
+  /** content 里的书 → 卡片展示模型 */
+  toCardModel(book) {
+    const total = book.pages.length;
+    const read = vault.progressOf(book.id);
+    const done = book.released && total > 0 && read >= total;
+    let progressText;
+    if (!book.released) progressText = '筹备中';
+    else if (done) progressText = '已读完';
+    else if (read > 0) progressText = '读到第 ' + (read + 1) + ' 页';
+    else progressText = total + ' 页';
+
+    return {
+      id: book.id,
+      title: book.title,
+      titleCn: book.titleCn,
+      tag: book.tag,
+      emoji: book.emoji,
+      cover: book.cover,
+      level: book.level,
+      released: book.released,
+      done: done,
+      progressText: progressText,
+    };
+  },
+
+  onListScroll(e) {
+    // 只记不 setData：每帧 setData 会把滚动拖成幻灯片
+    this.listScrollTop = e.detail.scrollTop;
+  },
+
+  // ==================== 进入 / 退出阅读器 ====================
+
+  onOpenBook(e) {
+    const book = bookById(e.detail.id);
+    if (!book || !book.released || book.pages.length === 0) return;
+
+    vault.touchStreak();
+    this.current = book;
+    this.badVideos = {};
+
+    // 拆句 + 逐词时间轴：朗读与字幕共用这一份，保证「读到哪、亮到哪」永远一致
+    this.sentences = book.pages.map((p) => splitSentences(p.en));
+    this.timings = this.sentences.map((list) => list.map(buildWordTiming));
+
+    const pages = book.pages.map((p, i) => ({
+      emoji: p.emoji,
+      decor: p.decor,
+      cn: p.cn,
+      sceneSrc: buildScene(p.scene, p.accent),
+      tokens: layoutCaption(this.timings[i], p.glossary),
+    }));
+
+    // 读完的书再点进来从头开始，没读完的续读
+    const saved = vault.progressOf(book.id);
+    const start = saved >= book.pages.length ? 0 : saved;
+
+    this.setData({
+      mode: 'reader',
+      book: { id: book.id, title: book.title, titleCn: book.titleCn, total: book.pages.length },
+      pages: pages,
+      gloss: null,
+      justSaved: false,
+    }, () => this.applyPage(start));
+
+    // 整本台词预热音频上下文；整本视频按阅读顺序排队预下载
+    const flatSentences = [];
+    this.sentences.forEach((list) => list.forEach((s) => flatSentences.push(s)));
+    voice.prime(flatSentences);
+    filmstrip.enqueue(book.pages.map((p) => p.videoUrl).filter(Boolean));
+  },
+
+  exitReader() {
+    this.stopAll();
+    if (this.unsubVideo) { this.unsubVideo(); this.unsubVideo = null; }
+    this.current = null;
+    this.timings = [];
+    this.sentences = [];
+    this.setData({
+      mode: 'list',
+      book: null,
+      pages: [],
+      pageIndex: 0,
+      atEnd: false,
+      videoSrc: '',
+      loading: false,
+      percent: 0,
+      gloss: null,
+      justSaved: false,
+      scrollTop: this.listScrollTop, // 还原钻取前的滚动位置（PRD §3.1）
+    });
+    this.refreshList();
+  },
+
+  // ==================== 翻页 ====================
+
+  /** 应用页码：写进度、刷新页码点、把视频订阅切到这一页 */
+  applyPage(index) {
+    const book = this.current;
     if (!book) return;
-    if (!book.released) {
-      wx.showToast({ title: '敬请期待 🐾', icon: 'none' });
+    const total = book.pages.length;
+    const next = Math.max(0, Math.min(total, index)); // == total 时是 The End 页
+
+    vault.saveProgress(book.id, next);
+    if (next < total) vault.markPageSeen(book.id, next);
+
+    const dots = [];
+    for (let i = 0; i <= total; i++) {
+      dots.push({ wide: i === next, passed: i < next });
+    }
+
+    this.setData({ pageIndex: next, atEnd: next >= total, dots: dots });
+    this.watchVideo(next);
+  },
+
+  /**
+   * 订阅当前页视频的下载状态。
+   * ⚠️ 回调里必须比对 url —— 翻页瞬间上一页的 ready 事件还可能在路上，
+   * 不比对就会把上一页的视频挂到当前页，出现「翻页闪现前一段画面」。
+   */
+  watchVideo(index) {
+    if (this.unsubVideo) { this.unsubVideo(); this.unsubVideo = null; }
+
+    const book = this.current;
+    const url = book && index < book.pages.length ? (book.pages[index].videoUrl || '') : '';
+    if (!url) {
+      this.setData({ videoSrc: '', loading: false, percent: 0 });
       return;
     }
-    this.savedScrollTop = this.listScrollTop;
-    store.recordReadDay();
 
-    const current = Math.min(store.getProgress(id), book.pages.length - 1);
-    this.setData({ mode: 'reader', book, pageCount: book.pages.length, current }, () => {
-      this.preparePage();
+    filmstrip.prioritize(url);
+    this.paintVideo(url, filmstrip.stateOf(url));
+    this.unsubVideo = filmstrip.subscribe((u, state) => {
+      if (u !== url) return;
+      this.paintVideo(url, state);
     });
-
-    // 进入本书即整本排队串行预下载，当前页插队优先（PRD §3.3 / §3.7）
-    const urls = book.pages.map((p) => p.videoUrl).filter(Boolean);
-    preloader.enqueue(urls);
-    const curUrl = book.pages[current] && book.pages[current].videoUrl;
-    if (curUrl) preloader.promote(curUrl);
-    urls.forEach((u) => preloader.subscribe(u, this.onVideoState.bind(this)));
   },
 
-  closeReader() {
-    this.stopPlayback();
-    tts.releaseAll();
-    if (this.data.book) {
-      this.data.book.pages.forEach((p) => p.videoUrl && preloader.unsubscribeAll(p.videoUrl));
-    }
-    this.setData({ mode: 'list', book: null, gloss: null });
-    this.buildGroups();
-    wx.pageScrollTo({ scrollTop: this.savedScrollTop || 0, duration: 0 });
+  paintVideo(url, state) {
+    const failed = !!this.badVideos[url];
+    const ready = !failed && state.status === 'ready' && !!state.localPath;
+    this.setData({
+      videoSrc: ready ? state.localPath : '',
+      loading: !failed && (state.status === 'idle' || state.status === 'loading'),
+      percent: state.percent || 0,
+    });
   },
 
-  // ---------- 阅读器：翻页 ----------
+  onVideoError() {
+    const book = this.current;
+    const i = this.data.pageIndex;
+    if (!book || i >= book.pages.length) return;
+    const url = book.pages[i].videoUrl;
+    if (url) this.badVideos[url] = true;
+    // 退回矢量场景，不弹错误提示（PRD §3.7 失败降级）
+    this.setData({ videoSrc: '', loading: false });
+  },
 
   onSwiperChange(e) {
-    this.goPage(e.detail.current);
+    const next = e.detail.current;
+    if (!this.current || next === this.data.pageIndex) return;
+    this.stopAll();
+    this.setData({ gloss: null, justSaved: false });
+    this.applyPage(next);
   },
 
-  goPage(idx) {
-    if (idx === this.data.current) return; // 滑动与按钮两条路径只处理一次
-    this.stopPlayback();
-    this.setData({ current: idx, gloss: null });
-    const { book, pageCount } = this.data;
-    if (idx < pageCount) {
-      store.setProgress(book.id, idx);
-      store.recordPageRead(book.id, idx);
-      this.preparePage();
-      const url = book.pages[idx].videoUrl;
-      if (url) preloader.promote(url);
-    } else {
-      // 末页后附 The End 庆祝页，读完打 ✓（PRD §3.3）
-      store.markDone(book.id);
-    }
+  goPage(index) {
+    if (!this.current) return;
+    this.stopAll();
+    this.setData({ gloss: null, justSaved: false });
+    this.applyPage(index);
   },
 
-  prevPage() {
-    if (this.data.current > 0) this.goPage(this.data.current - 1);
-  },
+  onPrev() { this.goPage(this.data.pageIndex - 1); },
+  onNext() { this.goPage(this.data.pageIndex + 1); },
+  onReadAgain() { this.goPage(0); },
 
-  nextPage() {
-    if (this.data.current <= this.data.pageCount - 1) {
-      this.goPage(this.data.current + 1);
-    }
-  },
+  // ==================== 播放绘本 ====================
 
-  restartBook() {
-    this.goPage(0);
-  },
+  /**
+   * 「播放绘本」（PRD §3.4）：视频静音循环 + 女童声旁白**并行**，
+   * 字幕逐词高亮跟随旁白真实节奏；再次点击停止。读完停在本页，不自动翻页。
+   */
+  onTogglePlay() {
+    if (this.data.playing) { this.stopAll(); return; }
 
-  // ---------- 阅读器：页面准备 ----------
+    const i = this.data.pageIndex;
+    const list = this.sentences[i];
+    if (!this.current || i >= this.current.pages.length || !list || list.length === 0) return;
 
-  currentPage() {
-    const { book, current, pageCount } = this.data;
-    if (!book || current >= pageCount) return null;
-    return book.pages[current];
-  },
-
-  preparePage() {
-    const page = this.currentPage();
-    if (!page) return;
-    const sentences = splitSentences(page.en).map((s) => ({
-      text: s,
-      words: buildWordViews(s, page.glossary),
-    }));
-    this.setData({
-      reader: { playing: false, sentIdx: -1, wordIdx: -1, showCn: false, sentences },
-    });
-    this.refreshVideoState();
-  },
-
-  // videoState 必须携带其所属页的 url，避免上一页视频"就绪态"闪现（PRD §3.4）
-  onVideoState(url) {
-    const page = this.currentPage();
-    if (!page || page.videoUrl !== url) return;
-    this.refreshVideoState();
-  },
-
-  refreshVideoState() {
-    const page = this.currentPage();
-    if (!page) return;
-    const url = page.videoUrl;
-    const st = url ? preloader.stateOf(url) : null;
-    this.setData({
-      video: {
-        ready: !!(st && st.status === 'done'),
-        failed: !url || !!(st && st.status === 'failed'),
-        src: (st && st.path) || '',
-        progress: (st && st.progress) || 0,
-        loading: !!(st && (st.status === 'loading' || st.status === 'queued')),
+    this.setData({ playing: true, si: 0, wi: 0 });
+    this.narrator.play(list, {
+      onSentence: (s) => this.setData({ si: s, wi: 0 }),
+      onWord: (s, w) => {
+        if (s !== this.data.si || w !== this.data.wi) this.setData({ si: s, wi: w });
       },
+      onDone: () => this.setData({ playing: false, si: -1, wi: -1 }),
     });
   },
 
-  // ---------- 播放绘本（PRD §3.4 / §3.5）----------
-
-  togglePlay() {
-    if (this.data.reader.playing) {
-      this.stopPlayback();
-    } else {
-      this.startPlayback();
-    }
+  /** 停掉旁白与单词发音，清掉高亮 */
+  stopAll() {
+    if (this.narrator) this.narrator.stop();
+    if (this.wordHandle) { this.wordHandle.stop(); this.wordHandle = null; }
+    this.setData({ playing: false, si: -1, wi: -1 });
   },
 
-  startPlayback() {
-    const page = this.currentPage();
-    if (!page) return;
-    const token = ++this.playSeq;
-    this.setData({ 'reader.playing': true, 'reader.sentIdx': 0, 'reader.wordIdx': -1 });
-    // 中文字幕延迟 200ms 淡入（PRD §3.5）
-    this.cnTimer = setTimeout(() => {
-      if (token === this.playSeq) this.setData({ 'reader.showCn': true });
-    }, config.CN_DELAY_MS);
-    this.playSentence(0, token);
+  // ==================== 生词查义 ====================
+
+  /** 点字幕里的生词：先停旁白再展开释义（PRD §3.3） */
+  onTapWord(e) {
+    const { word, cn } = e.detail;
+    if (!word) return;
+    this.stopAll();
+
+    const book = this.current;
+    const saved = book
+      ? vault.collectWord({ word: word, cn: cn, bookId: book.id, bookTitle: book.titleCn })
+      : false;
+
+    this.setData({ gloss: { word: word, cn: cn }, justSaved: saved });
+    this.speakWord(word);
   },
 
-  playSentence(i, token) {
-    if (token !== this.playSeq) return;
-    const { sentences } = this.data.reader;
-    if (i >= sentences.length) {
-      // 旁白读完停在本页，视频继续静音循环（PRD §3.4）
-      this.setData({ 'reader.playing': false, 'reader.sentIdx': -1, 'reader.wordIdx': -1 });
-      return;
-    }
-    this.setData({ 'reader.sentIdx': i, 'reader.wordIdx': -1 });
-
-    const text = sentences[i].text;
-    const wt = timing.buildWordTiming(text);
-    let cutDone = false;
-
-    const cut = () => {
-      if (cutDone || token !== this.playSeq) return;
-      cutDone = true;
-      this.clearPoll();
-      if (this.curCtl) { this.curCtl.stop(); this.curCtl = null; }
-      // 句间停顿 STORY_GAP_MS（PRD §3.4）
-      this.gapTimer = setTimeout(() => this.playSentence(i + 1, token), config.STORY_GAP_MS);
-    };
-
-    const onProgress = (t, dur) => {
-      if (cutDone || token !== this.playSeq || !dur) return;
-      // 句间静音裁剪：在 max(dur - TAIL, 0.6*dur) 处切段（PRD §3.5）
-      const cutoff = Math.max(dur - config.TAIL_S, 0.6 * dur);
-      if (t >= cutoff) { cut(); return; }
-      const elapsed = t - config.LEAD_S;
-      const wi = timing.wordIndexAt(elapsed, wt, cutoff - config.LEAD_S);
-      if (elapsed >= 0 && wi !== this.data.reader.wordIdx) {
-        this.setData({ 'reader.wordIdx': wi });
-      }
-    };
-
-    const ctl = tts.play(text, {
-      onTimeUpdate: onProgress, // 音频 onProgress 回调驱动逐词高亮，不用固定定时器
-      onEnded: cut,
-      onError: () => this.silentAnimate(i, token, wt.tokens.length),
-    });
-    this.curCtl = ctl;
-
-    if (ctl.silent) {
-      // 整站降级期：无声动画，阅读流程不被网络阻塞（PRD §3.6）
-      this.silentAnimate(i, token, wt.tokens.length);
-      return;
-    }
-
-    // 兜底轮询 currentTime（个别机型 onTimeUpdate 触发过疏时保证能切段）
-    this.pollTimer = setInterval(() => {
-      if (!this.curCtl || token !== this.playSeq) return;
-      const pos = this.curCtl.position && this.curCtl.position();
-      if (pos && pos.duration > 0) onProgress(pos.currentTime, pos.duration);
-    }, 80);
+  onPlayGloss() {
+    const g = this.data.gloss;
+    if (g) this.speakWord(g.word);
   },
 
-  silentAnimate(i, token, wordCount) {
-    if (token !== this.playSeq) return;
-    this.clearPoll();
-    let wi = 0;
-    const step = () => {
-      if (token !== this.playSeq) return;
-      if (wi >= wordCount) {
-        this.gapTimer = setTimeout(() => this.playSentence(i + 1, token), config.STORY_GAP_MS);
-        return;
-      }
-      this.setData({ 'reader.wordIdx': wi });
-      wi += 1;
-      this.silentTimer = setTimeout(step, config.SILENT_WORD_MS);
-    };
-    step();
+  speakWord(word) {
+    if (this.wordHandle) this.wordHandle.stop();
+    this.wordHandle = voice.speak(word, {});
   },
 
-  clearPoll() {
-    if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null; }
-  },
-
-  stopPlayback() {
-    this.playSeq += 1;
-    this.clearPoll();
-    if (this.gapTimer) { clearTimeout(this.gapTimer); this.gapTimer = null; }
-    if (this.cnTimer) { clearTimeout(this.cnTimer); this.cnTimer = null; }
-    if (this.silentTimer) { clearTimeout(this.silentTimer); this.silentTimer = null; }
-    if (this.curCtl) { this.curCtl.stop(); this.curCtl = null; }
-    if (this.data.reader.playing) {
-      this.setData({ 'reader.playing': false, 'reader.sentIdx': -1, 'reader.wordIdx': -1 });
-    }
-  },
-
-  // ---------- 生词查义（PRD §3.3 / §3.4）----------
-
-  onWordTap(e) {
-    const gi = e.currentTarget.dataset.g;
-    if (gi === undefined || gi === null || gi < 0) return;
-    const page = this.currentPage();
-    if (!page || !page.glossary[gi]) return;
-    // 点击时先停止旁白再展开释义
-    this.stopPlayback();
-    const entry = page.glossary[gi];
-    this.setData({ gloss: { word: entry.word, cn: entry.cn } });
-    tts.playWord(entry.word);
-    store.addGlossaryWord({
-      word: entry.word, cn: entry.cn,
-      bookId: this.data.book.id, bookTitle: this.data.book.title,
-    });
-  },
-
-  glossReplay() {
-    if (this.data.gloss) tts.playWord(this.data.gloss.word);
-  },
-
-  closeGloss() {
-    this.setData({ gloss: null });
+  onCloseGloss() {
+    if (this.wordHandle) { this.wordHandle.stop(); this.wordHandle = null; }
+    this.setData({ gloss: null, justSaved: false });
   },
 });

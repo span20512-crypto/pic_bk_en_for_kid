@@ -1,78 +1,100 @@
-# pic_bk_en_for_kid
-
-picture book for kid in English
+# pic_bk_en_for_kid · 英语绘本馆
 
 面向 3-8 岁儿童的英语视频绘本微信小程序：看动画 + 听女童声旁白 + 视频内双语字幕逐词高亮。
 
 - 📄 产品需求文档：[PRD.md](PRD.md)
 - 🎬 绘本选题来源：小红书 [@快乐学英语008](https://xhslink.cn/m/9X1YJ9nPOOc)「小动物成长系列绘本动画 / 趣味英语故事」
-- ⚠️ 内容政策：只借用题材，台词与画面全部原创改写，原视频不搬运、不嵌入（详见 PRD §2.2）
+- ⚠️ 内容政策：只借用题材，台词与画面全部原创改写，原视频不搬运、不嵌入（详见 [PRD §2.2](PRD.md)）
 
-## 当前状态（MVP）
+当前进度：**V1.0 MVP** —— 3 Tab 框架完成，30 本书目已排入书架，首本《小蚂蚁和大象》完整可读。
 
-首本绘本《The Ant and the Elephant · 小蚂蚁和大象》已可完整试读（Level 1，6 页），其余 29 本以「敬请期待」占位卡形式在列。已实现：
-
-- 绘本馆 Tab：系列分组卡片流、吸顶系列标题、阅读进度徽章，列表 → 阅读器同页钻取
-- 阅读器：Swiper 翻页 + 每页 Mixkit 免版权视频插画（串行预下载、当前页插队、失败降级矢量场景 + Emoji 拼画）
-- 播放绘本：女童声旁白（en-US-AnaNeural，语速 -15%）+ 视频内双语字幕，英文逐词高亮由音频进度驱动，句间静音裁剪
-- 生词查义：字幕内 3 生词/页 下划线高亮，点按发音 + 释义条，自动入生词本
-- 生词本 Tab：按绘本筛选、一键复习顺序播放发音
-- 我的 Tab：游客态 + 阅读统计（已读本数 / 页数 / 连续天数 / 生词数）
-- 进度持久化 + The End 庆祝页 + 读完 ✓ 徽章
+---
 
 ## 快速开始
 
-1. 克隆本仓库，用 [微信开发者工具](https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html) 导入仓库根目录（`project.config.json` 已指向 `miniprogram/`），AppID 用测试号即可
-2. 详情 → 本地设置 → 勾选「不校验合法域名」（视频托管在 Mixkit、旁白 MP3 托管在 jsDelivr，尚未配置业务域名）
-3. 编译即可试读《小蚂蚁和大象》
+原生微信小程序，**没有构建步骤**，开发者工具导入即跑。
 
-## 内容管线
+```bash
+# 1. 用微信开发者工具导入本仓库根目录（miniprogramRoot 已指向 miniprogram/）
+# 2. 静态自查（唯一的「编译期」）
+node scripts/check.mjs
+```
 
-- **旁白语料**：全部会被朗读的英文文案在构建期离线预生成 MP3，存于 `assets/audio/`（按 `ttsKey(text)` 散列命名），客户端经 jsDelivr 直接拼 URL 播放。新增/修改台词后必须运行：
+`project.config.json` 里的 `appid` 是 `touristappid`（游客模式）。换成自己的 AppID 即可真机预览。
 
-  ```bash
-  pip install edge-tts        # 首次
-  node scripts/gen-tts.mjs    # 幂等增量生成（--dry 只体检不生成）
-  ```
-
-- **静态自查**：提交前运行
-
-  ```bash
-  node scripts/verify.js
-  ```
-
-  覆盖 JSON 合法性、页面四件套、require 图、绘本数据完整性（页数 / 分级句长 / 生词匹配 / ttsKey 冲突）、语料齐备性。
-
-- **换素材**：视频与台词全部集中在 `miniprogram/pages/books/data.js`，正版授权落地后只需替换每页 `videoUrl` 与台词并重跑 gen-tts。
+---
 
 ## 目录结构
 
 ```
-├── PRD.md                     # 产品需求文档
-├── project.config.json        # 开发者工具项目配置（miniprogramRoot: miniprogram/）
-├── assets/audio/              # 离线预生成的女童声旁白 MP3（jsDelivr 充当公开桶）
-├── scripts/
-│   ├── gen-tts.mjs            # 旁白语料生成（edge-tts / en-US-AnaNeural）
-│   └── verify.js              # 开发静态自查
-└── miniprogram/
-    ├── app.{js,json,wxss}
-    ├── styles/utils.wxss      # 原子类对照表
-    ├── utils/
-    │   ├── config.js          # TTS 公开桶地址、播放节奏参数、登录端点
-    │   ├── tts-key.js         # 语料散列键 + 拆句规则（三端共享）
-    │   ├── tts.js             # 旁白播放：LRU 复用 + 按条降级 + 整站降级时间盒
-    │   ├── timing.js          # 逐词高亮权重表（buildWordTiming / wordIndexAt）
-    │   ├── video-preloader.js # 串行预下载队列（当前页插队）
-    │   └── store.js           # 本地存储：进度 / 生词本 / 阅读统计
-    └── pages/
-        ├── books/             # 绘本馆（列表 + 阅读器同页钻取）+ data.js 全部绘本内容
-        ├── glossary/          # 生词本
-        └── index/             # 我的
+miniprogram/
+├── app.js / app.json / app.wxss    入口、路由与主题令牌
+├── core/                           与界面无关的引擎层
+│   ├── hash.js         语料寻址契约（ttsKey，已冻结）
+│   ├── cadence.js      拆句 + 逐词时间轴（音节估算）
+│   ├── voice.js        女童声音源 + 两层自愈降级
+│   ├── narrator.js     逐句朗读编排（裁静音 / 补停顿 / 进度回调）
+│   ├── lexicon.js      字幕排版与生词标注（支持词组）
+│   ├── scenery.js      8 个矢量场景模板（视频降级画面）
+│   ├── filmstrip.js    视频串行预下载队列
+│   ├── vault.js        本地存储：进度 / 生词本 / 统计
+│   └── settings.js     运行期配置（音源地址、节奏常量）
+├── content/                        绘本内容，一本一个文件
+│   ├── series.js       系列元数据
+│   ├── catalog.js      30 本书目 + released 上线开关
+│   └── books/          已上线绘本的台词、生词、场景、视频
+├── components/                     自定义组件
+│   ├── book-card/      绘本卡（含「敬请期待」占位态）
+│   ├── story-stage/    画面舞台：视频 / 矢量场景 / Emoji 三层
+│   ├── story-caption/  视频内双语字幕
+│   └── gloss-bar/      生词释义条
+└── pages/
+    ├── books/          绘本馆：列表 ⇄ 阅读器同页钻取
+    ├── glossary/       生词本
+    └── index/          我的
+
+assets/audio/                       女童声语料（不进小程序包，走 CDN）
+scripts/
+├── check.mjs           静态自查
+├── gen-tts.mjs         语料离线生成
+└── make-icons.py       tabBar 图标生成
 ```
 
-## 上线前待办（摘自 PRD §7）
+分层的意思是：`core/` 不认识绘本，`content/` 不认识渲染，`components/` 不认识音频。
+加第 2 本绘本只需要动 `content/`；调朗读节奏只需要动 `core/settings.js`。
 
-- [ ] 真机验证「静音视频 + 旁白」音频会话并行（PRD §3.4 技术风险）
-- [ ] 小程序后台配置 downloadFile 合法域名（assets.mixkit.co），否则视频预下载静默失败、逐页退回降级画面
-- [ ] 其余 29 本台词撰写 + 视频选配 + 语料生成
-- [ ] 提审前版权自查（标题 / 台词 / 画面三项逐本核对），「关于」信息已在「我的」页脚标注素材来源
+---
+
+## 新增一本绘本
+
+1. 在 `miniprogram/content/books/` 下按 `ant-and-elephant.js` 的形状写 6 页台词与生词。
+2. 在 `content/catalog.js` 里把对应条目的 `soon(...)` 换成完整对象，`released: true`。
+3. 跑 `node scripts/gen-tts.mjs` 生成新台词的女童声语料（幂等增量，已有的自动跳过）。
+4. 跑 `node scripts/check.mjs`，它会校验分级规则、生词能否在台词里匹配上、语料是否齐全。
+
+> ⚠️ **改动任何会被朗读的英文文案后必须重跑 `gen-tts.mjs`**，否则那句话没有语料，
+> 只能走静默降级（字幕照走，但没有声音）。`check.mjs` 会把这种情况报出来。
+
+---
+
+## 语音与视频
+
+**旁白**：全部英文语料在构建期用 `en-US-AnaNeural`（微软女童声，语速 -15%）离线生成，
+提交在 `assets/audio/`，客户端按 `ttsKey(文本)` 直接拼 URL 播放。
+MVP 阶段用本仓库 + jsDelivr CDN 充当「公开对象存储桶」，换自建 OSS 只改 `core/settings.js` 的 `VOICE_BASES`。
+
+降级链的每一环都指向**同一批语料的不同镜像**，而不是退到别家 TTS ——
+PRD §6 要求全应用同一女童声、不允许混音色，所以镜像全挂时宁可静默（字幕按估算节奏走完），也不换嗓子。
+
+**视频**：每页配一段主题匹配的 Mixkit 免版权 360p 短片，串行预下载完再播，
+未就绪 / 失败时退回矢量场景 + Emoji，阅读流程不被网络阻塞。
+
+---
+
+## 上线前必办
+
+| # | 事项 | 说明 |
+|---|---|---|
+| 1 | mp 后台配置 **downloadFile 合法域名** | 加入 `assets.mixkit.co`。不配会让视频预下载在真机上**静默失败**、每页退回矢量场景，而开发者工具勾了「不校验合法域名」看不出来。（音频/视频/图片的 `src` 不受此白名单约束，只有 request/downloadFile 受约束） |
+| 2 | **真机验证音视频并行** | PRD §3.4 的技术风险注记：小程序端 `<video>` 与 `InnerAudioContext` 并行播放存在音频会话抢占风险。个别机型冲突时降级为「旁白期间暂停视频画面但保留视频内字幕」。 |
+| 3 | 版权自查 | 逐本核对标题 / 台词 / 画面三项。「我的 → 素材来源与授权状态」页已内置声明。 |

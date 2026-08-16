@@ -1,0 +1,17 @@
+<!--
+  字幕条：叠在视频画面底部，自下而上的渐变遮罩保证任何画面上都读得清。
+  模板里只做 si / wi 的数值比对 —— 生词匹配早在进入绘本时算完了。
+-->
+<view class="bar">
+  <view class="line {{playing ? 'line-live' : ''}}">
+    <text
+      wx:for="{{tokens}}"
+      wx:key="key"
+      class="tk{{item.isGloss ? ' tk-gloss' : ''}}{{playing && item.si === si && item.wi === wi ? ' tk-now' : ''}}{{playing && item.si !== si ? ' tk-dim' : ''}}"
+      data-word="{{item.glossWord}}"
+      data-cn="{{item.glossCn}}"
+      bindtap="onTapToken"
+    >{{item.text}}</text>
+  </view>
+  <text class="cn">{{cn}}</text>
+</view>

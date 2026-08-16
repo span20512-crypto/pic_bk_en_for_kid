@@ -1,99 +1,121 @@
-const store = require('../../utils/store');
-const tts = require('../../utils/tts');
-const { bookList } = require('../books/data');
+/**
+ * 生词本 Tab（PRD §3.8）
+ *
+ * 阅读中点开过释义的词自动入库，这里按绘本筛选、逐条复习。
+ *
+ * 「一键复习」直接复用 core/narrator —— 它本来就是「按顺序播一串英文、
+ * 中间留出呼吸」的东西，绘本旁白和单词复习是同一件事的两种粒度。
+ * 复用的好处不只是省代码：句间停顿、尾静音裁剪、音源自愈这些日后调一次，
+ * 两个场景一起受益。
+ */
+const vault = require('../../core/vault');
+const voice = require('../../core/voice');
+const { createNarrator } = require('../../core/narrator');
 
 Page({
   data: {
-    entries: [],      // 当前筛选下展示的生词
-    filters: [],      // [{ id, label }]
-    activeFilter: 'all',
-    reviewing: false, // 一键复习中
-    reviewIdx: -1,
+    words: [],        // 当前筛选下的词条
+    filters: [],      // [{ id, label, count }]，id 为 '' 表示全部
+    activeFilter: '',
+    reviewing: false,
+    reviewIndex: -1,  // 复习时高亮到第几条
+    empty: true,
   },
 
-  reviewSeq: 0,
-  reviewCtl: null,
-  reviewTimer: null,
+  narrator: null,
+  all: [],
+  handle: null,
+
+  onLoad() {
+    this.narrator = createNarrator();
+  },
 
   onShow() {
     this.reload();
   },
 
-  onHide() {
-    this.stopReview();
-    tts.releaseAll();
-  },
-
-  onUnload() {
-    this.stopReview();
-    tts.releaseAll();
-  },
+  onHide() { this.stopReview(); },
+  onUnload() { this.stopReview(); },
 
   reload() {
-    const all = store.getGlossary().slice().reverse(); // 新词在前
-    const bookIds = [];
-    all.forEach((e) => { if (bookIds.indexOf(e.bookId) < 0) bookIds.push(e.bookId); });
-    const filters = [{ id: 'all', label: '全部' }].concat(
-      bookIds.map((id) => {
-        const b = bookList.find((x) => x.id === id);
-        return { id, label: (b && b.titleCn) || id };
-      })
-    );
-    this.setData({ filters }, () => this.applyFilter(this.data.activeFilter, all));
+    this.all = vault.glossaryBook();
+
+    // 按出处绘本聚合成筛选条
+    const counts = {};
+    this.all.forEach((w) => {
+      if (!counts[w.bookId]) counts[w.bookId] = { id: w.bookId, label: w.bookTitle, count: 0 };
+      counts[w.bookId].count++;
+    });
+    const filters = [{ id: '', label: '全部', count: this.all.length }]
+      .concat(Object.keys(counts).map((k) => counts[k]));
+
+    // 筛选的书被清空后，回落到「全部」
+    const active = filters.some((f) => f.id === this.data.activeFilter) ? this.data.activeFilter : '';
+
+    this.setData({
+      filters: filters,
+      activeFilter: active,
+      empty: this.all.length === 0,
+    }, () => this.applyFilter());
   },
 
-  applyFilter(fid, allCached) {
-    const all = allCached || store.getGlossary().slice().reverse();
-    const entries = fid === 'all' ? all : all.filter((e) => e.bookId === fid);
-    this.setData({ activeFilter: fid, entries, reviewIdx: -1 });
+  applyFilter() {
+    const key = this.data.activeFilter;
+    const words = (key ? this.all.filter((w) => w.bookId === key) : this.all)
+      .map((w) => ({ word: w.word, cn: w.cn, bookId: w.bookId, bookTitle: w.bookTitle }));
+    this.setData({ words: words, reviewIndex: -1 });
   },
 
-  onFilterTap(e) {
+  onPickFilter(e) {
     this.stopReview();
-    this.applyFilter(e.currentTarget.dataset.id);
+    this.setData({ activeFilter: e.currentTarget.dataset.id }, () => this.applyFilter());
   },
 
-  onPlayTap(e) {
+  // ---------- 单词发音 ----------
+
+  onTapWord(e) {
     this.stopReview();
-    const idx = e.currentTarget.dataset.idx;
-    const entry = this.data.entries[idx];
-    if (entry) tts.playWord(entry.word);
+    const word = e.currentTarget.dataset.word;
+    if (!word) return;
+    if (this.handle) this.handle.stop();
+    this.handle = voice.speak(word, {});
   },
 
-  // 一键复习：顺序播放全部发音（PRD §3.8）
-  toggleReview() {
-    if (this.data.reviewing) {
-      this.stopReview();
-    } else {
-      this.startReview();
-    }
+  onLongPress(e) {
+    const { word, book } = e.currentTarget.dataset;
+    wx.showModal({
+      title: '移出生词本',
+      content: '把「' + word + '」从生词本里移出？',
+      confirmColor: '#FF8C42',
+      success: (res) => {
+        if (!res.confirm) return;
+        vault.removeWord(word, book);
+        this.reload();
+      },
+    });
   },
 
-  startReview() {
-    if (!this.data.entries.length) return;
-    const token = ++this.reviewSeq;
-    this.setData({ reviewing: true });
-    this.reviewNext(0, token);
-  },
+  // ---------- 一键复习 ----------
 
-  reviewNext(i, token) {
-    if (token !== this.reviewSeq) return;
-    if (i >= this.data.entries.length) {
-      this.setData({ reviewing: false, reviewIdx: -1 });
-      return;
-    }
-    this.setData({ reviewIdx: i });
-    const advance = () => {
-      this.reviewTimer = setTimeout(() => this.reviewNext(i + 1, token), 400);
-    };
-    this.reviewCtl = tts.playWord(this.data.entries[i].word, advance);
-    if (this.reviewCtl && this.reviewCtl.silent) advance();
+  onToggleReview() {
+    if (this.data.reviewing) { this.stopReview(); return; }
+    const list = this.data.words.map((w) => w.word);
+    if (list.length === 0) return;
+
+    this.setData({ reviewing: true, reviewIndex: 0 });
+    this.narrator.play(list, {
+      onSentence: (i) => this.setData({ reviewIndex: i }),
+      onDone: () => this.setData({ reviewing: false, reviewIndex: -1 }),
+    });
   },
 
   stopReview() {
-    this.reviewSeq += 1;
-    if (this.reviewTimer) { clearTimeout(this.reviewTimer); this.reviewTimer = null; }
-    if (this.reviewCtl) { this.reviewCtl.stop(); this.reviewCtl = null; }
-    if (this.data.reviewing) this.setData({ reviewing: false, reviewIdx: -1 });
+    if (this.narrator) this.narrator.stop();
+    if (this.handle) { this.handle.stop(); this.handle = null; }
+    this.setData({ reviewing: false, reviewIndex: -1 });
+  },
+
+  onGoRead() {
+    wx.switchTab({ url: '/pages/books/index' });
   },
 });
