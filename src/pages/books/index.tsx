@@ -1,0 +1,488 @@
+/**
+ * 绘本馆：列表 + 阅读器同页钻取（PRD §1.2 / §3.1 / §3.3 / §3.4 / §3.5）
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Taro, { useDidHide, usePageScroll, useUnload } from '@tarojs/taro'
+import { View, Text, Swiper, SwiperItem, Video } from '@tarojs/components'
+import config from '../../utils/config'
+import * as store from '../../utils/store'
+import * as tts from '../../utils/tts'
+import * as preloader from '../../utils/video-preloader'
+import { buildWordTiming, tokenize, wordIndexAt } from '../../utils/timing'
+import { localMediaAvailable, localMediaUrl, probeLocalMedia } from '../../utils/media'
+import './index.scss'
+
+const { seriesMeta, seriesOrder, bookList } = require('../../data/books')
+const { splitSentences } = require('../../utils/tts-key')
+
+interface WordView { t: string; g: number }
+interface SentenceView { text: string; words: WordView[] }
+
+// 生词标注：句子 token 与本页生词匹配（支持 match 词形与多词短语）
+function buildWordViews(sentence: string, glossary: any[]): WordView[] {
+  const tokens = tokenize(sentence)
+  const norm = tokens.map((t) => t.replace(/[^A-Za-z']/g, '').toLowerCase())
+  const views: WordView[] = tokens.map((t) => ({ t, g: -1 }))
+  ;(glossary || []).forEach((entry, gi) => {
+    const target = (entry.match || entry.word).toLowerCase().split(/\s+/)
+    for (let i = 0; i + target.length <= norm.length; i++) {
+      let hit = true
+      for (let j = 0; j < target.length; j++) {
+        if (norm[i + j] !== target[j]) { hit = false; break }
+      }
+      if (hit) {
+        for (let j = 0; j < target.length; j++) views[i + j].g = gi
+        break
+      }
+    }
+  })
+  return views
+}
+
+function buildGroups() {
+  return seriesOrder.map((key: string) => {
+    const books = bookList
+      .filter((b: any) => b.series === key)
+      .map((b: any) => {
+        let progressText = '敬请期待'
+        let done = false
+        if (b.released) {
+          done = store.isDone(b.id)
+          if (done) {
+            progressText = '✓ 已读完'
+          } else {
+            const p = store.getProgress(b.id)
+            progressText = p > 0 ? `读到第 ${p + 1} 页` : '还没开始读'
+          }
+        }
+        return { ...b, progressText, done }
+      })
+    const doneCount = books.filter((x: any) => x.done).length
+    return { key, meta: seriesMeta[key], books, doneCount, total: books.length }
+  })
+}
+
+export default function Books() {
+  const [mode, setMode] = useState<'list' | 'reader'>('list')
+  const [groups, setGroups] = useState(buildGroups)
+  const [book, setBook] = useState<any>(null)
+  const [current, setCurrent] = useState(0)
+  const [playing, setPlaying] = useState(false)
+  const [sentIdx, setSentIdx] = useState(-1)
+  const [wordIdx, setWordIdx] = useState(-1)
+  const [showCn, setShowCn] = useState(false)
+  const [gloss, setGloss] = useState<any>(null)
+  const [videoTick, setVideoTick] = useState(0) // 预下载状态变化触发重渲染
+
+  const playSeq = useRef(0)
+  const ctlRef = useRef<tts.PlayController | null>(null)
+  const pollTimer = useRef<any>(null)
+  const gapTimer = useRef<any>(null)
+  const cnTimer = useRef<any>(null)
+  const silentTimer = useRef<any>(null)
+  const listScrollTop = useRef(0)
+  const savedScrollTop = useRef(0)
+
+  const pageCount = book ? book.pages.length : 0
+  const page = book && current < pageCount ? book.pages[current] : null
+
+  const sentences: SentenceView[] = useMemo(() => {
+    if (!page) return []
+    return splitSentences(page.en).map((s: string) => ({
+      text: s,
+      words: buildWordViews(s, page.glossary),
+    }))
+  }, [page])
+
+  // 本页视频源：本地原版素材（开发期）优先，其次 Mixkit 预下载，失败回落降级场景
+  const video = useMemo(() => {
+    if (!page) return { kind: 'none', ready: false, failed: true, src: '', progress: 0, loading: false, clip: null as null | number[] }
+    if (localMediaAvailable() && page.local) {
+      return {
+        kind: 'local', ready: true, failed: false, loading: false, progress: 100,
+        src: localMediaUrl(page.local.file), clip: page.local.clip,
+      }
+    }
+    const st = page.videoUrl ? preloader.stateOf(page.videoUrl) : null
+    return {
+      kind: 'remote',
+      ready: !!(st && st.status === 'done'),
+      failed: !page.videoUrl || !!(st && st.status === 'failed'),
+      loading: !!(st && (st.status === 'loading' || st.status === 'queued')),
+      progress: (st && st.progress) || 0,
+      src: (st && st.path) || '',
+      clip: null,
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, videoTick])
+
+  usePageScroll((e) => {
+    if (mode === 'list') listScrollTop.current = e.scrollTop
+  })
+
+  const clearTimers = () => {
+    if (pollTimer.current) { clearInterval(pollTimer.current); pollTimer.current = null }
+    if (gapTimer.current) { clearTimeout(gapTimer.current); gapTimer.current = null }
+    if (cnTimer.current) { clearTimeout(cnTimer.current); cnTimer.current = null }
+    if (silentTimer.current) { clearTimeout(silentTimer.current); silentTimer.current = null }
+  }
+
+  const stopPlayback = useCallback(() => {
+    playSeq.current += 1
+    clearTimers()
+    if (ctlRef.current) { ctlRef.current.stop(); ctlRef.current = null }
+    setPlaying(false)
+    setSentIdx(-1)
+    setWordIdx(-1)
+  }, [])
+
+  useDidHide(() => { stopPlayback(); tts.releaseAll() })
+  useUnload(() => { stopPlayback(); tts.releaseAll() })
+
+  // ---------- 播放绘本（PRD §3.4 / §3.5） ----------
+
+  const playSentence = useCallback((i: number, token: number, sents: SentenceView[]) => {
+    if (token !== playSeq.current) return
+    if (i >= sents.length) {
+      // 旁白读完停在本页，视频继续静音循环
+      setPlaying(false); setSentIdx(-1); setWordIdx(-1)
+      return
+    }
+    setSentIdx(i); setWordIdx(-1)
+
+    const text = sents[i].text
+    const wt = buildWordTiming(text)
+    let cutDone = false
+    let lastWord = -1
+
+    const cut = () => {
+      if (cutDone || token !== playSeq.current) return
+      cutDone = true
+      if (pollTimer.current) { clearInterval(pollTimer.current); pollTimer.current = null }
+      if (ctlRef.current) { ctlRef.current.stop(); ctlRef.current = null }
+      gapTimer.current = setTimeout(() => playSentence(i + 1, token, sents), config.STORY_GAP_MS)
+    }
+
+    const silentAnimate = () => {
+      if (token !== playSeq.current) return
+      if (pollTimer.current) { clearInterval(pollTimer.current); pollTimer.current = null }
+      let wi = 0
+      const step = () => {
+        if (token !== playSeq.current) return
+        if (wi >= wt.tokens.length) {
+          gapTimer.current = setTimeout(() => playSentence(i + 1, token, sents), config.STORY_GAP_MS)
+          return
+        }
+        setWordIdx(wi)
+        wi += 1
+        silentTimer.current = setTimeout(step, config.SILENT_WORD_MS)
+      }
+      step()
+    }
+
+    const onProgress = (t: number, dur: number) => {
+      if (cutDone || token !== playSeq.current || !dur) return
+      // 句间静音裁剪：在 max(dur - TAIL, 0.6*dur) 处切段（PRD §3.5）
+      const cutoff = Math.max(dur - config.TAIL_S, 0.6 * dur)
+      if (t >= cutoff) { cut(); return }
+      const elapsed = t - config.LEAD_S
+      const wi = wordIndexAt(elapsed, wt, cutoff - config.LEAD_S)
+      if (elapsed >= 0 && wi !== lastWord) {
+        lastWord = wi
+        setWordIdx(wi)
+      }
+    }
+
+    const ctl = tts.play(text, {
+      onTimeUpdate: onProgress, // 音频进度回调驱动逐词高亮，不用固定定时器
+      onEnded: cut,
+      onError: silentAnimate,
+    })
+    ctlRef.current = ctl
+
+    if (ctl.silent) { silentAnimate(); return }
+
+    // 兜底轮询 currentTime（个别机型 onTimeUpdate 触发过疏时保证能切段）
+    pollTimer.current = setInterval(() => {
+      if (!ctlRef.current || token !== playSeq.current) return
+      const pos = ctlRef.current.position && ctlRef.current.position()
+      if (pos && pos.duration > 0) onProgress(pos.currentTime, pos.duration)
+    }, 80)
+  }, [])
+
+  const startPlayback = useCallback(() => {
+    if (!sentences.length) return
+    const token = ++playSeq.current
+    setPlaying(true); setSentIdx(0); setWordIdx(-1)
+    cnTimer.current = setTimeout(() => {
+      if (token === playSeq.current) setShowCn(true)
+    }, config.CN_DELAY_MS)
+    playSentence(0, token, sentences)
+  }, [sentences, playSentence])
+
+  const togglePlay = () => (playing ? stopPlayback() : startPlayback())
+
+  // ---------- 翻页 ----------
+
+  const goPage = useCallback((idx: number) => {
+    setCurrent((prev) => {
+      if (idx === prev || !book) return prev
+      stopPlayback()
+      setGloss(null)
+      setShowCn(false)
+      if (idx < book.pages.length) {
+        store.setProgress(book.id, idx)
+        store.recordPageRead(book.id, idx)
+        const url = book.pages[idx].videoUrl
+        if (url) preloader.promote(url)
+      } else {
+        store.markDone(book.id) // The End 页：读完打 ✓
+      }
+      return idx
+    })
+  }, [book, stopPlayback])
+
+  const onSwiperChange = (e: any) => goPage(e.detail.current)
+
+  // ---------- 进出阅读器 ----------
+
+  const openBook = (b: any) => {
+    if (!b.released) {
+      Taro.showToast({ title: '敬请期待 🐾', icon: 'none' })
+      return
+    }
+    savedScrollTop.current = listScrollTop.current
+    store.recordReadDay()
+    probeLocalMedia() // 每次进书重探一次本地媒体服务器
+    const full = bookList.find((x: any) => x.id === b.id)
+    const cur = Math.min(store.getProgress(b.id), full.pages.length - 1)
+    setBook(full)
+    setCurrent(cur)
+    setShowCn(false)
+    setMode('reader')
+
+    // 进入本书即整本排队串行预下载，当前页插队优先（PRD §3.3 / §3.7）
+    const urls = full.pages.map((p: any) => p.videoUrl).filter(Boolean)
+    preloader.enqueue(urls)
+    const curUrl = full.pages[cur] && full.pages[cur].videoUrl
+    if (curUrl) preloader.promote(curUrl)
+    urls.forEach((u: string) => preloader.subscribe(u, () => setVideoTick((t) => t + 1)))
+  }
+
+  const closeReader = () => {
+    stopPlayback()
+    tts.releaseAll()
+    if (book) book.pages.forEach((p: any) => p.videoUrl && preloader.unsubscribeAll(p.videoUrl))
+    setMode('list')
+    setBook(null)
+    setGloss(null)
+    setGroups(buildGroups())
+    Taro.pageScrollTo({ scrollTop: savedScrollTop.current || 0, duration: 0 })
+  }
+
+  // ---------- 本地原版素材：分段循环播放 ----------
+
+  const videoCtxSeekGuard = useRef(0)
+  const onVideoTime = (e: any) => {
+    if (video.kind !== 'local' || !video.clip) return
+    const t = e.detail.currentTime
+    const [start, end] = video.clip
+    if (t < start - 0.5 || t > end) {
+      const now = Date.now()
+      if (now - videoCtxSeekGuard.current < 400) return // 防抖：seek 后事件回涌
+      videoCtxSeekGuard.current = now
+      Taro.createVideoContext('stage-video').seek(start)
+    }
+  }
+  // 切页后把本地素材定位到该页分段起点
+  useEffect(() => {
+    if (mode === 'reader' && video.kind === 'local' && video.clip) {
+      const timer = setTimeout(() => {
+        Taro.createVideoContext('stage-video').seek(video.clip![0])
+      }, 120)
+      return () => clearTimeout(timer)
+    }
+  }, [mode, current, video.kind])
+
+  // ---------- 生词查义（PRD §3.3 / §3.4） ----------
+
+  const onWordTap = (g: number) => {
+    if (g < 0 || !page || !page.glossary[g]) return
+    stopPlayback() // 点击时先停止旁白再展开释义
+    const entry = page.glossary[g]
+    setGloss({ word: entry.word, cn: entry.cn })
+    tts.playWord(entry.word)
+    store.addGlossaryWord({
+      word: entry.word, cn: entry.cn,
+      bookId: book.id, bookTitle: book.title,
+    })
+  }
+
+  // ==================== 渲染 ====================
+
+  if (mode === 'list') {
+    return (
+      <View className='list-wrap'>
+        <View className='banner'>
+          <Text className='banner-emoji'>📚</Text>
+          <View className='flex-col'>
+            <Text className='banner-title'>一座随身的小动物绘本馆</Text>
+            <Text className='banner-sub'>看动画 · 听故事 · 学英语</Text>
+          </View>
+        </View>
+
+        {groups.map((grp: any) => (
+          <View key={grp.key} className='series'>
+            <View className='series-head'>
+              <Text className='series-emoji'>{grp.meta.emoji}</Text>
+              <View className='flex-col flex-1'>
+                <Text className='series-title'>{grp.meta.title}</Text>
+                <Text className='series-sub'>{grp.meta.subtitle}</Text>
+              </View>
+              <Text className='series-count'>{grp.doneCount}/{grp.total} 本</Text>
+            </View>
+
+            {grp.books.map((b: any) => (
+              <View
+                key={b.id}
+                className={`book-card ${b.released ? '' : 'book-card-locked'}`}
+                hoverClass='press'
+                hoverStayTime={80}
+                onClick={() => openBook(b)}
+              >
+                <View className='cover' style={{ background: b.cover }}>
+                  <Text className='cover-emoji'>{b.emoji}</Text>
+                </View>
+                <View className='info flex-col flex-1'>
+                  <View className='flex items-center'>
+                    <Text className='btitle flex-1'>{b.title}</Text>
+                    <Text className={`badge-level badge-level-${b.level}`}>Lv{b.level}</Text>
+                  </View>
+                  <Text className='bsub'>{b.titleCn} · {b.tag}</Text>
+                  <Text className={`bprog ${b.done ? 'bprog-done' : ''}`}>{b.progressText}</Text>
+                </View>
+                {b.done && <Text className='done-mark'>✓</Text>}
+              </View>
+            ))}
+          </View>
+        ))}
+
+        <View className='list-foot'>🌱 更多绘本正在赶来的路上…</View>
+      </View>
+    )
+  }
+
+  return (
+    <View className='reader-wrap'>
+      <View className='reader-head'>
+        <View className='back-btn' hoverClass='press-dim' onClick={closeReader}>‹ 书架</View>
+        <View className='flex-col items-center flex-1'>
+          <Text className='reader-title'>{book.title}</Text>
+          <Text className='reader-sub'>{book.titleCn}</Text>
+        </View>
+        <Text className='page-no'>{current < pageCount ? `${current + 1}/${pageCount}` : '🎉'}</Text>
+      </View>
+
+      <Swiper className='reader-swiper' current={current} onChange={onSwiperChange} duration={280}>
+        {book.pages.map((p: any, index: number) => (
+          <SwiperItem key={index}>
+            <View className='stage-outer'>
+              <View className={`stage scene-${p.scene}`}>
+                {/* 仅当前页挂载 video（PRD §3.7） */}
+                {index === current && video.ready && !video.failed ? (
+                  <Video
+                    id='stage-video'
+                    className='stage-video'
+                    src={video.src}
+                    autoplay
+                    loop
+                    muted
+                    controls={false}
+                    showCenterPlayBtn={false}
+                    objectFit='cover'
+                    onTimeUpdate={onVideoTime}
+                  />
+                ) : (
+                  <View className='fallback'>
+                    <View className='blob' style={{ background: p.accent }} />
+                    <Text className='fb-main'>{p.emoji}</Text>
+                    <Text className='fb-decor fb-decor-tl'>{p.decor[0]}</Text>
+                    <Text className='fb-decor fb-decor-br'>{p.decor[1]}</Text>
+                  </View>
+                )}
+
+                {index === current && video.loading && !video.ready && (
+                  <View className='video-loading'>🎬 视频加载中 {video.progress}%</View>
+                )}
+                {index === current && video.kind === 'local' && (
+                  <View className='video-loading'>🧪 原版参考素材（本地）</View>
+                )}
+
+                {/* 双语字幕叠加在视频画面内部（PRD §3.4 / §3.5） */}
+                {index === current && (
+                  <View className={`subs ${playing ? 'subs-breathing' : ''}`}>
+                    <View className='sub-en'>
+                      {sentences.map((s, si) => (
+                        <View key={si} className={`sent ${playing && si !== sentIdx ? 'sent-dim' : ''}`}>
+                          {s.words.map((w, wi) => (
+                            <Text
+                              key={wi}
+                              className={`word ${w.g > -1 ? 'word-gloss' : ''} ${si === sentIdx && wi === wordIdx ? 'word-hot' : ''}`}
+                              onClick={(e) => { e.stopPropagation(); onWordTap(w.g) }}
+                            >{w.t}</Text>
+                          ))}
+                        </View>
+                      ))}
+                    </View>
+                    <View className={`sub-cn ${showCn ? 'sub-cn-show' : ''}`}>{p.cn}</View>
+                  </View>
+                )}
+              </View>
+            </View>
+          </SwiperItem>
+        ))}
+
+        {/* The End 庆祝页（PRD §3.3） */}
+        <SwiperItem>
+          <View className='end-page'>
+            <Text className='end-emoji'>🎉</Text>
+            <Text className='end-title'>The End</Text>
+            <Text className='end-sub'>你读完了《{book.titleCn}》，真棒！</Text>
+            <View className='end-btn end-btn-primary' hoverClass='press' onClick={() => goPage(0)}>再读一遍</View>
+            <View className='end-btn end-btn-ghost' hoverClass='press-dim' onClick={closeReader}>返回书架</View>
+          </View>
+        </SwiperItem>
+      </Swiper>
+
+      <View className='dots'>
+        {book.pages.map((_: any, index: number) => (
+          <View key={index} className={`dot ${index === current ? 'dot-on' : ''}`} />
+        ))}
+        <View className={`dot dot-star ${current === pageCount ? 'dot-on' : ''}`}>★</View>
+      </View>
+
+      {current < pageCount && (
+        <View className='controls'>
+          <View className={`ctl-btn ${current === 0 ? 'ctl-disabled' : ''}`} hoverClass='press-dim' onClick={() => current > 0 && goPage(current - 1)}>上一页</View>
+          <View
+            className={`play-btn ${playing ? 'play-btn-on' : ''}`}
+            hoverClass='press'
+            onClick={togglePlay}
+          >{playing ? '播放中…' : '▶ 播放绘本'}</View>
+          <View className='ctl-btn' hoverClass='press-dim' onClick={() => goPage(current + 1)}>下一页</View>
+        </View>
+      )}
+
+      {gloss && (
+        <View className='gloss-bar card-base'>
+          <View className='flex-col flex-1'>
+            <Text className='gloss-word'>{gloss.word}</Text>
+            <Text className='gloss-cn'>{gloss.cn}</Text>
+          </View>
+          <View className='gloss-play' hoverClass='press-dim' onClick={() => tts.playWord(gloss.word)}>🔊</View>
+          <View className='gloss-close' hoverClass='press-dim' onClick={() => setGloss(null)}>✕</View>
+        </View>
+      )}
+    </View>
+  )
+}

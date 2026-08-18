@@ -1,20 +1,20 @@
 #!/usr/bin/env node
 /**
  * 开发自查（PRD §1.1）：node scripts/verify.js
- * - JSON 合法性
- * - 页面四件套（js/json/wxml/wxss）
- * - require 图可达性
- * - 绘本数据完整性（字段、页数、分级句长、生词在台词中出现、ttsKey 无冲突）
- * - 旁白语料 MP3 是否齐备（assets/audio）
+ * Taro 结构版：
+ * - 页面三件套（index.tsx / index.config.ts / index.scss）
+ * - 绘本数据完整性（字段、页数、分级句长、生词匹配、本地分段合法性、ttsKey 冲突）
+ * - 旁白语料 MP3 齐备性（assets/audio）
+ * （JS/TS 语法与模块图交由 taro build 的 webpack 编译兜底）
  */
 const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const MP = path.join(ROOT, 'miniprogram');
+const SRC = path.join(ROOT, 'src');
 
-const { ttsKey, splitSentences, normalize } = require(path.join(MP, 'utils/tts-key.js'));
-const { seriesMeta, seriesOrder, bookList } = require(path.join(MP, 'pages/books/data.js'));
+const { ttsKey, splitSentences, normalize } = require(path.join(SRC, 'utils/tts-key.js'));
+const { seriesMeta, seriesOrder, bookList } = require(path.join(SRC, 'data/books.js'));
 
 let errors = 0;
 let warns = 0;
@@ -22,58 +22,16 @@ const err = (msg) => { errors += 1; console.error('✗ ' + msg); };
 const warn = (msg) => { warns += 1; console.warn('⚠ ' + msg); };
 const ok = (msg) => console.log('✓ ' + msg);
 
-// ---- 1. JSON 合法性 ----
-const jsonFiles = [
-  path.join(ROOT, 'project.config.json'),
-  path.join(MP, 'app.json'),
-  path.join(MP, 'sitemap.json'),
-];
-const appJson = JSON.parse(fs.readFileSync(path.join(MP, 'app.json'), 'utf8'));
-(appJson.pages || []).forEach((p) => jsonFiles.push(path.join(MP, p + '.json')));
-for (const f of jsonFiles) {
-  try {
-    JSON.parse(fs.readFileSync(f, 'utf8'));
-  } catch (e) {
-    err(`JSON 解析失败: ${path.relative(ROOT, f)} — ${e.message}`);
+// ---- 1. 页面三件套 ----
+const PAGES = ['pages/books', 'pages/glossary', 'pages/profile'];
+for (const p of PAGES) {
+  for (const f of ['index.tsx', 'index.config.ts', 'index.scss']) {
+    if (!fs.existsSync(path.join(SRC, p, f))) err(`页面缺文件: ${p}/${f}`);
   }
 }
-ok(`JSON 合法性（${jsonFiles.length} 个文件）`);
+ok(`页面三件套（${PAGES.length} 个页面）`);
 
-// ---- 2. 页面四件套 ----
-for (const p of appJson.pages || []) {
-  for (const ext of ['.js', '.json', '.wxml', '.wxss']) {
-    const f = path.join(MP, p + ext);
-    if (!fs.existsSync(f)) err(`页面缺文件: ${p}${ext}`);
-  }
-}
-ok(`页面四件套（${(appJson.pages || []).length} 个页面）`);
-
-// ---- 3. require 图 ----
-function walkJs(dir, out) {
-  for (const name of fs.readdirSync(dir)) {
-    const f = path.join(dir, name);
-    const st = fs.statSync(f);
-    if (st.isDirectory()) walkJs(f, out);
-    else if (name.endsWith('.js')) out.push(f);
-  }
-  return out;
-}
-const jsFiles = walkJs(MP, []);
-for (const f of jsFiles) {
-  const src = fs.readFileSync(f, 'utf8');
-  const re = /require\(\s*['"](\.[^'"]+)['"]\s*\)/g;
-  let m;
-  while ((m = re.exec(src))) {
-    const target = path.resolve(path.dirname(f), m[1]);
-    const candidates = [target, target + '.js', path.join(target, 'index.js')];
-    if (!candidates.some((c) => fs.existsSync(c) && fs.statSync(c).isFile())) {
-      err(`require 不可达: ${path.relative(MP, f)} → ${m[1]}`);
-    }
-  }
-}
-ok(`require 图（${jsFiles.length} 个 js）`);
-
-// ---- 4. 绘本数据完整性 ----
+// ---- 2. 绘本数据完整性 ----
 const REQUIRED_BOOK = ['id', 'series', 'title', 'titleCn', 'tag', 'emoji', 'cover', 'level', 'source'];
 const REQUIRED_PAGE = ['emoji', 'decor', 'scene', 'accent', 'en', 'cn', 'glossary'];
 const SCENES = ['forest', 'meadow', 'river', 'burrow', 'night', 'rain', 'snow', 'seaside'];
@@ -141,18 +99,33 @@ for (const b of bookList) {
     });
 
     if (p.videoUrl && !/^https:\/\//.test(p.videoUrl)) err(`${ptag} videoUrl 必须是 https`);
+    if (p.local) {
+      if (!p.local.file || !Array.isArray(p.local.clip) || p.local.clip.length !== 2) {
+        err(`${ptag} local 字段格式应为 { file, clip: [起, 止] }`);
+      } else if (!(p.local.clip[0] >= 0 && p.local.clip[1] > p.local.clip[0])) {
+        err(`${ptag} local.clip 分段非法: [${p.local.clip}]`);
+      }
+    }
   });
+
+  // 本地分段应首尾相接不重叠（同一素材文件时）
+  const clips = b.pages.filter((p) => p.local).map((p) => p.local.clip);
+  for (let i = 1; i < clips.length; i++) {
+    if (clips[i][0] < clips[i - 1][1] - 0.01) {
+      warn(`${tag} 第${i}页与第${i + 1}页的 local.clip 有重叠`);
+    }
+  }
 }
 ok(`绘本数据（${bookList.length} 本，其中已上线 ${bookList.filter((b) => b.released).length} 本）`);
 
-// ---- 5. 旁白语料齐备性 ----
+// ---- 3. 旁白语料齐备性 ----
 const AUDIO_DIR = path.join(ROOT, 'assets', 'audio');
 let missing = 0;
 for (const [key, text] of corpus) {
   const f = path.join(AUDIO_DIR, key + '.mp3');
   if (!fs.existsSync(f) || fs.statSync(f).size === 0) {
     missing += 1;
-    warn(`语料缺失: ${key}.mp3 ← "${text}"（运行 node scripts/gen-tts.mjs）`);
+    warn(`语料缺失: ${key}.mp3 ← "${text}"（运行 npm run gen:tts）`);
   }
 }
 if (missing === 0) ok(`旁白语料齐备（${corpus.size} 条 MP3）`);

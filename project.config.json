@@ -1,15 +1,15 @@
 {
-  "description": "英语绘本馆 pic_bk_en_for_kid",
-  "miniprogramRoot": "miniprogram/",
+  "description": "英语绘本馆 pic_bk_en_for_kid（Taro 4 + React，产物在 dist/）",
+  "miniprogramRoot": "dist/",
   "compileType": "miniprogram",
   "appid": "touristappid",
   "projectname": "pic_bk_en_for_kid",
   "libVersion": "3.5.0",
   "setting": {
-    "es6": true,
-    "enhance": true,
-    "postcss": true,
-    "minified": true,
+    "es6": false,
+    "enhance": false,
+    "postcss": false,
+    "minified": false,
     "urlCheck": false,
     "coverView": true,
     "ignoreUploadUnusedFiles": true

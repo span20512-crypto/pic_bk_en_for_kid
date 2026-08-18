@@ -24,8 +24,8 @@ const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 
-const { ttsKey, splitSentences, normalize } = require('../miniprogram/utils/tts-key.js');
-const { bookList } = require('../miniprogram/pages/books/data.js');
+const { ttsKey, splitSentences, normalize } = require('../src/utils/tts-key.js');
+const { bookList } = require('../src/data/books.js');
 
 const OUT_DIR = path.join(ROOT, 'assets', 'audio');
 const VOICE = 'en-US-AnaNeural';
