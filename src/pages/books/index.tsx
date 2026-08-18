@@ -253,7 +253,9 @@ export default function Books() {
     }
     savedScrollTop.current = listScrollTop.current
     store.recordReadDay()
-    probeLocalMedia() // 每次进书重探一次本地媒体服务器
+    // 每次进书重探本地媒体服务器；结果回来后必须触发重渲染，
+    // 否则探活成功也切不到原版画面（localMediaAvailable 不是响应式状态）
+    probeLocalMedia((ok) => setVideoTick((t) => t + 1))
     const full = bookList.find((x: any) => x.id === b.id)
     const cur = Math.min(store.getProgress(b.id), full.pages.length - 1)
     setBook(full)
@@ -416,6 +418,10 @@ export default function Books() {
                 )}
                 {index === current && video.kind === 'local' && (
                   <View className='video-loading'>🧪 原版参考素材（本地）</View>
+                )}
+                {/* 开发期提示：本页配了本地素材但媒体服务器不可达 */}
+                {index === current && video.kind !== 'local' && p.local && (
+                  <View className='video-loading video-hint'>⚠ 本地素材未连接：npm run serve:media</View>
                 )}
 
                 {/* 双语字幕叠加在视频画面内部（PRD §3.4 / §3.5） */}

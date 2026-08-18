@@ -359,3 +359,9 @@
 .scene-garden { background: linear-gradient(180deg, #BAE6FD 0%, #E0F2FE 38%, #86EFAC 39%, #16A34A 78%, #92400E 79%, #78350F 100%); }
 .scene-field  { background: linear-gradient(180deg, #BAE6FD 0%, #FEF9C3 40%, #FDE047 41%, #EAB308 100%); }
 .scene-kitchen{ background: linear-gradient(180deg, #FEF3C7 0%, #FFFBEB 45%, #FDBA74 46%, #C2410C 100%); }
+
+.video-hint {
+  top: auto;
+  bottom: 96px;
+  background: rgba(180, 83, 9, 0.85);
+}
