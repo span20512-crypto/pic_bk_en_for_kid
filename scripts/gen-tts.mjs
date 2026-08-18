@@ -45,8 +45,10 @@ function add(text) {
   corpus.set(key, t);
 }
 
+// 口径：只看有没有写好台词（pages），不看 released ——
+// 否则一本书临时下架会把它的语料判成孤儿，下次上架又要重新生成
 for (const book of bookList) {
-  if (!book.released) continue;
+  if (!book.pages || !book.pages.length) continue;
   for (const page of book.pages) {
     splitSentences(page.en).forEach(add);
     (page.glossary || []).forEach((g) => add(g.word));

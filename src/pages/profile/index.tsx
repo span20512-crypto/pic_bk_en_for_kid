@@ -71,9 +71,9 @@ export default function Profile() {
       </View>
 
       <View className='about'>
-        <Text>英语绘本馆 · MVP（Taro 4 + React）</Text>
-        <Text>绘本选题来自小红书 @快乐学英语008，台词与画面均为原创改写</Text>
-        <Text>视频占位素材：Mixkit（免版权）· 语音：微软 en-US-AnaNeural</Text>
+        <Text>英语绘本馆 · V1.2（Taro 4 + React）</Text>
+        <Text>绘本选题来自小红书 @阿可英语绘（认知类）与 @快乐学英语008（故事类）</Text>
+        <Text>台词与画面均为原创改写 · 视频占位：Mixkit（免版权）· 语音：微软 en-US-AnaNeural</Text>
       </View>
     </View>
   )

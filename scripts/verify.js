@@ -34,7 +34,7 @@ ok(`页面三件套（${PAGES.length} 个页面）`);
 // ---- 2. 绘本数据完整性 ----
 const REQUIRED_BOOK = ['id', 'series', 'title', 'titleCn', 'tag', 'emoji', 'cover', 'level', 'source'];
 const REQUIRED_PAGE = ['emoji', 'decor', 'scene', 'accent', 'en', 'cn', 'glossary'];
-const SCENES = ['forest', 'meadow', 'river', 'burrow', 'night', 'rain', 'snow', 'seaside'];
+const SCENES = ['forest', 'meadow', 'river', 'burrow', 'night', 'rain', 'snow', 'seaside', 'garden', 'field', 'kitchen'];
 const ids = new Set();
 const corpus = new Map();
 
@@ -59,9 +59,14 @@ for (const b of bookList) {
   if (b.level !== 1 && b.level !== 2) err(`${tag} level 必须是 1 或 2`);
   if (typeof b.released !== 'boolean') err(`${tag} released 必须是 boolean`);
 
-  if (!b.released) continue;
-  if (!Array.isArray(b.pages) || b.pages.length !== 6) {
-    err(`${tag} 已上线绘本必须恰好 6 页，当前 ${b.pages ? b.pages.length : 0}`);
+  // 口径：只看有没有写好台词（pages），不看 released（released 只是上架开关）
+  if (b.released && (!Array.isArray(b.pages) || !b.pages.length)) {
+    err(`${tag} released=true 但没有台词内容`);
+    continue;
+  }
+  if (!Array.isArray(b.pages) || !b.pages.length) continue;
+  if (b.pages.length !== 6) {
+    err(`${tag} 已写台词的绘本必须恰好 6 页，当前 ${b.pages.length}`);
     continue;
   }
 
@@ -116,7 +121,7 @@ for (const b of bookList) {
     }
   }
 }
-ok(`绘本数据（${bookList.length} 本，其中已上线 ${bookList.filter((b) => b.released).length} 本）`);
+ok(`绘本数据（${bookList.length} 本；已写台词 ${bookList.filter((b) => b.pages && b.pages.length).length} 本，已上线 ${bookList.filter((b) => b.released).length} 本）`);
 
 // ---- 3. 旁白语料齐备性 ----
 const AUDIO_DIR = path.join(ROOT, 'assets', 'audio');
