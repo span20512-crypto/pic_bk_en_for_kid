@@ -506,7 +506,7 @@ export default function Books() {
         {book.pages.map((p: any, index: number) => (
           <SwiperItem key={index}>
             <View className='stage-outer'>
-              <View className={`stage scene-${p.scene} ${index === current && video.kind === 'local' && video.ready ? 'stage-local' : ''}`}>
+              <View className={`stage scene-${p.scene} ${index === current && video.kind === 'local' ? 'stage-local' : ''}`}>
                 {/* 仅当前页挂载 video（PRD §3.7） */}
                 {index === current && video.ready && !video.failed ? (
                   <Video

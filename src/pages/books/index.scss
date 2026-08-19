@@ -111,10 +111,10 @@
 
 /* Swiper 高度 300px，视频框 320×250（PRD §3.3） */
 .reader-swiper {
-  height: 372px;   /* 画面 250 + 间距 10 + 字幕卡 ~112 */
+  height: 356px;   /* 画面 250 + 间距 10 + 字幕卡 ~96 */
 }
 .stage-outer {
-  height: 372px;
+  height: 356px;
   display: flex;
   flex-direction: column;   /* 画面在上、字幕卡在下 */
   align-items: center;
@@ -185,7 +185,7 @@
   margin-top: 10px;
   padding: 12px 14px;
   box-sizing: border-box;
-  min-height: 112px;          /* 固定下限，翻页时不跳动 */
+  min-height: 96px;           /* 固定下限，翻页时不跳动 */
   border-radius: 16px;
   background: #FFFFFF;
   box-shadow: 0 4px 14px rgba(31, 41, 55, 0.06);
@@ -233,11 +233,13 @@
   text-underline-offset: 4px;
 }
 
+/* 中文常显（字幕移出画面后，播放前藏起来会让卡片下半空着）；
+   播放时仍走 §3.5 的延迟淡入：开播瞬间压暗，200ms 后回到全不透明 */
 .sub-cn {
   font-size: 13px;
   color: #6B7280;
   margin-top: 6px;
-  opacity: 0;
+  opacity: 0.55;
   transition: opacity 0.35s ease;
 }
 .sub-cn-show { opacity: 1; }
@@ -376,4 +378,6 @@
 /* 本地参考素材为 1.7:1 宽幅，contain 显示时上下留白用深色填充，避免露出场景渐变 */
 .stage-local {
   background: #111827;
+  /* 本地参考素材是 1.7:1 宽幅：画框按比例收到 188，contain 后正好填满、无黑边 */
+  height: 188px;
 }
