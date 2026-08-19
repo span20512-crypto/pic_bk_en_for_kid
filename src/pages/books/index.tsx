@@ -306,6 +306,27 @@ export default function Books() {
     }
   }, [mode, current, video.kind])
 
+  // ---------- 开发期调试桥 ----------
+  // miniprogram-automator 的元素/data 查询在 Taro 运行时下会挂起（页面 data 只有
+  // 虚拟树 root），自动化用例改由逻辑层 evaluate 调 getApp().__debug 驱动页面。
+  useEffect(() => {
+    const app = Taro.getApp() as any
+    app.__debug = {
+      openBookById: (id: string) => {
+        const b = bookList.find((x: any) => x.id === id)
+        if (b) openBook(b)
+      },
+      goPage,
+      togglePlay,
+      closeReader,
+      state: () => ({
+        mode, current, playing, sentIdx, wordIdx,
+        videoKind: video.kind, videoReady: video.ready, videoFailed: video.failed,
+        localMedia: localMediaAvailable(),
+      }),
+    }
+  })
+
   // ---------- 生词查义（PRD §3.3 / §3.4） ----------
 
   const onWordTap = (g: number) => {
