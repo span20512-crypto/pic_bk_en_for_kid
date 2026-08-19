@@ -111,13 +111,14 @@
 
 /* Swiper 高度 300px，视频框 320×250（PRD §3.3） */
 .reader-swiper {
-  height: 300px;
+  height: 372px;   /* 画面 250 + 间距 10 + 字幕卡 ~112 */
 }
 .stage-outer {
-  height: 300px;
+  height: 372px;
   display: flex;
+  flex-direction: column;   /* 画面在上、字幕卡在下 */
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
 }
 .stage {
   position: relative;
@@ -180,21 +181,27 @@
 
 /* ---- 视频内双语字幕（PRD §3.4 / §3.5） ---- */
 .subs {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 4;
-  padding: 26px 12px 10px;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0) 0%, rgba(15, 23, 42, 0.62) 34%, rgba(15, 23, 42, 0.82) 100%);
+  width: 320px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  min-height: 112px;          /* 固定下限，翻页时不跳动 */
+  border-radius: 16px;
+  background: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(31, 41, 55, 0.06);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
+/* 朗读中：字幕卡描一圈主色呼吸边（原来是整块透明度闪烁，
+   移出画面成白卡后整块闪会很晃眼） */
 .subs-breathing {
-  animation: breathe 1.6s ease-in-out infinite;
+  animation: breathe 1.8s ease-in-out infinite;
 }
 @keyframes breathe {
-  0%   { opacity: 0.7; }
-  50%  { opacity: 1; }
-  100% { opacity: 0.7; }
+  0%   { box-shadow: 0 4px 14px rgba(31, 41, 55, 0.06), 0 0 0 0 rgba(52, 211, 153, 0.5); }
+  50%  { box-shadow: 0 4px 14px rgba(31, 41, 55, 0.06), 0 0 0 3px rgba(52, 211, 153, 0.5); }
+  100% { box-shadow: 0 4px 14px rgba(31, 41, 55, 0.06), 0 0 0 0 rgba(52, 211, 153, 0.5); }
 }
 
 .sub-en { display: flex; flex-direction: column; }
@@ -207,12 +214,12 @@
 
 /* 生词点击热区 ≥ 44×44（PRD §6）：用行高 + 内边距撑起 */
 .word {
-  font-size: 21px;
+  font-size: 17px;
   font-weight: 700;
-  color: #FFFFFF;
-  margin-right: 7px;
-  line-height: 30px;
-  padding: 2px 0;
+  color: #1F2937;
+  margin-right: 6px;
+  line-height: 26px;
+  padding: 1px 0;
   transition: color 0.12s ease, transform 0.12s ease;
 }
 .word-hot {
@@ -221,15 +228,15 @@
 }
 .word-gloss {
   text-decoration: underline;
-  text-decoration-color: #7DD3FC;
-  text-decoration-thickness: 3px;
+  text-decoration-color: #0EA5E9;
+  text-decoration-thickness: 2px;
   text-underline-offset: 4px;
 }
 
 .sub-cn {
-  font-size: 14px;
-  color: #E5E7EB;
-  margin-top: 5px;
+  font-size: 13px;
+  color: #6B7280;
+  margin-top: 6px;
   opacity: 0;
   transition: opacity 0.35s ease;
 }

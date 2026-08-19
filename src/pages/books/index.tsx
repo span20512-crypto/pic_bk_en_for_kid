@@ -101,17 +101,17 @@ export default function Books() {
   const verbatimLayout = !!(book && book.verbatim)
 
   /**
-   * 字幕渲染范围：常规书整页多句同屏（当前句高亮、其余降透明，PRD §3.5）；
-   * verbatim 书每页有 4-5 句，同屏会把字幕撑满整个视频框、盖住画面 ——
-   * 与原片「一次一句」的呈现也不符，故只渲染当前句（未播放时给第 1 句作预览）。
+   * 字幕渲染范围：整页 1-2 句时同屏显示（当前句高亮、其余降透明，PRD §3.5）；
+   * 超过 2 句就只渲染当前句（未播放时给第 1 句作预览）—— 多句同屏会把字幕块撑得
+   * 比画面还高，也不符合原片「一次一句」的呈现。verbatim 书每页 3-5 句，恒走单句。
    */
   const visibleSentences = useMemo(() => {
     const all = sentences.map((s, si) => ({ s, si }))
-    if (!verbatimLayout || all.length <= 3) return all
+    if (all.length <= 2) return all
     const at = sentIdx >= 0 ? Math.min(sentIdx, all.length - 1) : 0
     return all.slice(at, at + 1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sentences, verbatimLayout, sentIdx])
+  }, [sentences, sentIdx])
 
   /**
    * 中文字幕：cn 为数组时与 en 逐句配对 —— 只显示当前英文句对应的那句，
@@ -120,8 +120,13 @@ export default function Books() {
   const cnText = useMemo(() => {
     if (!page) return ''
     if (!Array.isArray(page.cn)) return page.cn
-    const at = visibleSentences.length ? visibleSentences[0].si : 0
-    return page.cn[Math.min(at, page.cn.length - 1)] || ''
+    // 单句模式跟着当前朗读句走；多句同屏时把整页中文拼起来，
+    // 否则中文会一直停在第 1 句、与正在读的英文对不上
+    if (visibleSentences.length === 1) {
+      const at = visibleSentences[0].si
+      return page.cn[Math.min(at, page.cn.length - 1)] || ''
+    }
+    return page.cn.join('')
   }, [page, visibleSentences])
 
   /**
@@ -543,8 +548,10 @@ export default function Books() {
                   <View className='video-loading video-hint'>⚠ 本地素材未连接：电脑跑 serve:media，真机需同一 Wi-Fi</View>
                 )}
 
-                {/* 双语字幕叠加在视频画面内部（PRD §3.4 / §3.5） */}
-                {index === current && (
+              </View>
+
+              {/* 双语字幕：独立卡片置于画面正下方，不再叠加遮挡画面（PRD §3.5） */}
+              {index === current && (
                   <View className={`subs ${playing ? 'subs-breathing' : ''}`}>
                     <View className='sub-en'>
                       {visibleSentences.map(({ s, si }) => (
@@ -562,7 +569,6 @@ export default function Books() {
                     <View className={`sub-cn ${showCn ? 'sub-cn-show' : ''}`}>{cnText}</View>
                   </View>
                 )}
-              </View>
             </View>
           </SwiperItem>
         ))}
