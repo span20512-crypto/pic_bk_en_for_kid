@@ -37,6 +37,10 @@ swift scripts/clean-media.swift \
 处理后画面是 1.7:1 宽幅，阅读器对本地素材用 `objectFit: contain` 完整显示，
 上下留白填深色（`.stage-local`）。
 
+> ⚠️ **换素材后必须把 `src/utils/config.ts` 的 `LOCAL_MEDIA_VERSION` +1**。
+> URL 不变时微信会沿用已缓存的旧视频 —— 曾因此在真机上看到"处理没生效"（画面仍带
+> 原片横幅与字幕），而服务端其实早已是新文件。改版本号会让 URL 变化，强制重新拉取。
+
 ## 用法
 
 1. 素材放进本目录，文件名与 `src/data/books/` 里对应书的 `local.file` 一致

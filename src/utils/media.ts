@@ -34,7 +34,8 @@ export function localMediaAvailable(): boolean {
 
 export function localMediaUrl(file: string): string {
   const base = localMediaBase()
-  return base ? base + file : ''
+  // 带版本号：素材换了但 URL 不变时，微信会沿用缓存的旧视频（见 config 注释）
+  return base ? `${base}${file}?v=${config.LOCAL_MEDIA_VERSION}` : ''
 }
 
 /** video 加载失败时调用：淘汰该地址，推进到下一个候选 */

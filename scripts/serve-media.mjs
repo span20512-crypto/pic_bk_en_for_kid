@@ -61,6 +61,8 @@ const server = http.createServer((req, res) => {
       'Accept-Ranges': 'bytes',
       'Content-Length': end - start + 1,
       'Access-Control-Allow-Origin': '*',
+      // 开发期素材会被反复替换，禁掉中间层缓存（客户端侧另有 LOCAL_MEDIA_VERSION 兜底）
+      'Cache-Control': 'no-store, must-revalidate',
     })
     fs.createReadStream(file, { start, end }).pipe(res)
   } else {
@@ -69,6 +71,8 @@ const server = http.createServer((req, res) => {
       'Content-Length': size,
       'Accept-Ranges': 'bytes',
       'Access-Control-Allow-Origin': '*',
+      // 开发期素材会被反复替换，禁掉中间层缓存（客户端侧另有 LOCAL_MEDIA_VERSION 兜底）
+      'Cache-Control': 'no-store, must-revalidate',
     })
     fs.createReadStream(file).pipe(res)
   }
