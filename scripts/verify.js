@@ -77,10 +77,20 @@ for (const b of bookList) {
     }
     if (!Array.isArray(p.decor) || p.decor.length !== 2) err(`${ptag} decor 必须是 2 个 Emoji`);
     if (SCENES.indexOf(p.scene) < 0) err(`${ptag} scene 无效: ${p.scene}`);
+    // en/cn 支持整段字符串或逐句数组；数组时两者必须一一配对
+    const enText = Array.isArray(p.en) ? p.en.join(' ') : p.en;
+    if (Array.isArray(p.en) || Array.isArray(p.cn)) {
+      if (!Array.isArray(p.en) || !Array.isArray(p.cn)) {
+        err(`${ptag} en 与 cn 必须同为数组或同为字符串`);
+      } else if (p.en.length !== p.cn.length) {
+        err(`${ptag} en/cn 句数不配对: ${p.en.length} vs ${p.cn.length}`);
+      }
+    }
+
     if (!Array.isArray(p.glossary) || p.glossary.length !== 3) {
       err(`${ptag} 生词必须恰好 3 个`);
     } else {
-      const enLower = ' ' + p.en.toLowerCase().replace(/[^a-z']+/g, ' ') + ' ';
+      const enLower = ' ' + enText.toLowerCase().replace(/[^a-z']+/g, ' ') + ' ';
       p.glossary.forEach((g) => {
         if (!g.word || !g.cn) err(`${ptag} 生词缺 word/cn`);
         const needle = ' ' + (g.match || g.word).toLowerCase() + ' ';
@@ -93,7 +103,7 @@ for (const b of bookList) {
 
     // 分级句长（PRD §3.2）：拟声/感叹短句（≤2 词）不计入句数
     // verbatim（原片直录）书按原片节拍走，不适用分级约束，语料也不入 TTS 管线
-    const sents = splitSentences(p.en);
+    const sents = Array.isArray(p.en) ? p.en : splitSentences(p.en);
     if (!b.verbatim) {
       const real = sents.filter((s) => s.split(/\s+/).length > 2);
       const maxSents = b.level === 1 ? 2 : 3;

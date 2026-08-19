@@ -86,9 +86,12 @@ export default function Books() {
   const pageCount = book ? book.pages.length : 0
   const page = book && current < pageCount ? book.pages[current] : null
 
+  // en 支持两种写法：整段字符串（按 §3.5 拆句规则切）或已逐句切好的数组
+  // （verbatim 书用数组，因为引号内的多句台词拆句正则切不准，且要与 cn 一一配对）
   const sentences: SentenceView[] = useMemo(() => {
     if (!page) return []
-    return splitSentences(page.en).map((s: string) => ({
+    const lines: string[] = Array.isArray(page.en) ? page.en : splitSentences(page.en)
+    return lines.map((s: string) => ({
       text: s,
       words: buildWordViews(s, page.glossary),
     }))
@@ -109,6 +112,17 @@ export default function Books() {
     return all.slice(at, at + 1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sentences, verbatimLayout, sentIdx])
+
+  /**
+   * 中文字幕：cn 为数组时与 en 逐句配对 —— 只显示当前英文句对应的那句，
+   * 与 visibleSentences 的取句保持同步；cn 为字符串时整段显示（既有行为）。
+   */
+  const cnText = useMemo(() => {
+    if (!page) return ''
+    if (!Array.isArray(page.cn)) return page.cn
+    const at = visibleSentences.length ? visibleSentences[0].si : 0
+    return page.cn[Math.min(at, page.cn.length - 1)] || ''
+  }, [page, visibleSentences])
 
   /**
    * verbatim 模式的字幕时间轴：把本页 clip 时长按各句的词权重之和切成归一化区段
@@ -543,7 +557,7 @@ export default function Books() {
                         </View>
                       ))}
                     </View>
-                    <View className={`sub-cn ${showCn ? 'sub-cn-show' : ''}`}>{p.cn}</View>
+                    <View className={`sub-cn ${showCn ? 'sub-cn-show' : ''}`}>{cnText}</View>
                   </View>
                 )}
               </View>

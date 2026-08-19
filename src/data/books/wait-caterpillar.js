@@ -36,8 +36,12 @@ module.exports = [
     // Yellow caterpillar walking on a leaf
     videoUrl: 'https://assets.mixkit.co/videos/6961/6961-360.mp4',
     local: { file: 'impatient-caterpillar.mp4', clip: [0, 9] },
-    en: 'Once upon a time there was a very impatient caterpillar.',
-    cn: '很久很久以前，有一只非常没有耐心的毛毛虫。',
+    en: [
+      `Once upon a time there was a very impatient caterpillar.`,
+    ],
+    cn: [
+      `很久很久以前，有一只非常没有耐心的毛毛虫。`,
+    ],
     glossary: [
       { word: 'impatient', cn: '没有耐心的' },
       { word: 'caterpillar', cn: '毛毛虫' },
@@ -52,8 +56,16 @@ module.exports = [
     // Huge trees in a large green forest
     videoUrl: 'https://assets.mixkit.co/videos/5040/5040-360.mp4',
     local: { file: 'impatient-caterpillar.mp4', clip: [9, 21] },
-    en: `He saw other caterpillars climbing a tree. "Hey! Where are you going?" "We're going to become butterflies!"`,
-    cn: '他看到别的毛毛虫在往树上爬。"嘿！你们要去哪儿呀？""我们要去变成蝴蝶啦！"',
+    en: [
+      `He saw other caterpillars climbing a tree.`,
+      `"Hey! Where are you going?"`,
+      `"We're going to become butterflies!"`,
+    ],
+    cn: [
+      `他看到别的毛毛虫在往树上爬。`,
+      `"嘿！你们要去哪儿呀？"`,
+      `"我们要去变成蝴蝶啦！"`,
+    ],
     glossary: [
       { word: 'climb', cn: '爬', match: 'climbing' },
       { word: 'butterfly', cn: '蝴蝶', match: 'butterflies' },
@@ -68,8 +80,18 @@ module.exports = [
     // Tree branches in the breeze
     videoUrl: 'https://assets.mixkit.co/videos/1188/1188-360.mp4',
     local: { file: 'impatient-caterpillar.mp4', clip: [21, 34] },
-    en: `"Wait for me!" He zoomed up the tree. "Build your chrysalis and wait two weeks." "Two weeks?! That's WAY too long!"`,
-    cn: '"等等我！"他嗖地爬上了大树。"结好你的蛹，然后等上两个星期。""两个星期？！那也太久了吧！"',
+    en: [
+      `"Wait for me!"`,
+      `He zoomed up the tree.`,
+      `"Build your chrysalis and wait two weeks."`,
+      `"Two weeks?! That's WAY too long!"`,
+    ],
+    cn: [
+      `"等等我！"`,
+      `他嗖地爬上了大树。`,
+      `"结好你的蛹，然后等上两个星期。"`,
+      `"两个星期？！那也太久了吧！"`,
+    ],
     glossary: [
       { word: 'wait', cn: '等待' },
       { word: 'chrysalis', cn: '蛹' },
@@ -84,8 +106,18 @@ module.exports = [
     // Sunshine through green leaves
     videoUrl: 'https://assets.mixkit.co/videos/16185/16185-360.mp4',
     local: { file: 'impatient-caterpillar.mp4', clip: [34, 52] },
-    en: `He wrapped himself up fast. "How about now?" "No! Be patient!" But he could not wait.`,
-    cn: '他飞快地把自己裹了起来。"现在好了吗？""还没呢！要有耐心！"可是他就是等不及。',
+    en: [
+      `He wrapped himself up fast.`,
+      `"How about now?"`,
+      `"No! Be patient!"`,
+      `But he could not wait.`,
+    ],
+    cn: [
+      `他飞快地把自己裹了起来。`,
+      `"现在好了吗？"`,
+      `"还没呢！要有耐心！"`,
+      `可是他就是等不及。`,
+    ],
     glossary: [
       { word: 'wrap', cn: '包裹', match: 'wrapped' },
       { word: 'patient', cn: '有耐心的' },
@@ -100,8 +132,20 @@ module.exports = [
     // Maple leaves in the sunshine
     videoUrl: 'https://assets.mixkit.co/videos/48110/48110-360.mp4',
     local: { file: 'impatient-caterpillar.mp4', clip: [52, 70] },
-    en: `He burst out too soon. He fell to the ground. "Oh no! Where are my wings?!" His friend smiled. "Growing takes time."`,
-    cn: '他太早冲出来了。他摔到了地上。"糟糕！我的翅膀呢？！"他的朋友笑了笑："长大是需要时间的。"',
+    en: [
+      `He burst out too soon.`,
+      `He fell to the ground.`,
+      `"Oh no! Where are my wings?!"`,
+      `His friend smiled.`,
+      `"Growing takes time."`,
+    ],
+    cn: [
+      `他太早冲出来了。`,
+      `他摔到了地上。`,
+      `"糟糕！我的翅膀呢？！"`,
+      `他的朋友笑了笑。`,
+      `"长大是需要时间的。"`,
+    ],
     glossary: [
       { word: 'burst', cn: '冲出；破开' },
       { word: 'wing', cn: '翅膀', match: 'wings' },
@@ -116,8 +160,16 @@ module.exports = [
     // Monarch butterfly takes flight
     videoUrl: 'https://assets.mixkit.co/videos/4276/4276-360.mp4',
     local: { file: 'impatient-caterpillar.mp4', clip: [70, 87.5] },
-    en: `This time, he waited. "I did it! I'm a BUTTERFLY! Waiting was so worth it!"`,
-    cn: '这一次，他耐心地等待着。"我做到啦！我是一只蝴蝶！这样的等待太值得了！"',
+    en: [
+      `This time, he waited.`,
+      `"I did it! I'm a BUTTERFLY!"`,
+      `"Waiting was so worth it!"`,
+    ],
+    cn: [
+      `这一次，他耐心地等待着。`,
+      `"我做到啦！我是一只蝴蝶！"`,
+      `"这样的等待太值得了！"`,
+    ],
     glossary: [
       { word: 'wait', cn: '等待', match: 'waited' },
       { word: 'butterfly', cn: '蝴蝶', match: 'butterfly' },
