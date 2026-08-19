@@ -224,22 +224,25 @@ export default function Books() {
 
   // ---------- 翻页 ----------
 
+  // currentRef 镜像 current，供 goPage 同步判重——副作用不能放进 setState updater
+  // （React 可能重复调用 updater，进度写入/预下载插队会被双跑）
+  const currentRef = useRef(0)
+
   const goPage = useCallback((idx: number) => {
-    setCurrent((prev) => {
-      if (idx === prev || !book) return prev
-      stopPlayback()
-      setGloss(null)
-      setShowCn(false)
-      if (idx < book.pages.length) {
-        store.setProgress(book.id, idx)
-        store.recordPageRead(book.id, idx)
-        const url = book.pages[idx].videoUrl
-        if (url) preloader.promote(url)
-      } else {
-        store.markDone(book.id) // The End 页：读完打 ✓
-      }
-      return idx
-    })
+    if (!book || idx === currentRef.current) return
+    currentRef.current = idx
+    stopPlayback()
+    setGloss(null)
+    setShowCn(false)
+    setCurrent(idx)
+    if (idx < book.pages.length) {
+      store.setProgress(book.id, idx)
+      store.recordPageRead(book.id, idx)
+      const url = book.pages[idx].videoUrl
+      if (url) preloader.promote(url)
+    } else {
+      store.markDone(book.id) // The End 页：读完打 ✓
+    }
   }, [book, stopPlayback])
 
   const onSwiperChange = (e: any) => goPage(e.detail.current)
@@ -258,6 +261,7 @@ export default function Books() {
     probeLocalMedia((ok) => setVideoTick((t) => t + 1))
     const full = bookList.find((x: any) => x.id === b.id)
     const cur = Math.min(store.getProgress(b.id), full.pages.length - 1)
+    currentRef.current = cur
     setBook(full)
     setCurrent(cur)
     setShowCn(false)
@@ -268,7 +272,11 @@ export default function Books() {
     preloader.enqueue(urls)
     const curUrl = full.pages[cur] && full.pages[cur].videoUrl
     if (curUrl) preloader.promote(curUrl)
-    urls.forEach((u: string) => preloader.subscribe(u, () => setVideoTick((t) => t + 1)))
+    // 先清旧订阅再订阅，重复进同一本书不累积回调
+    urls.forEach((u: string) => {
+      preloader.unsubscribeAll(u)
+      preloader.subscribe(u, () => setVideoTick((t) => t + 1))
+    })
   }
 
   const closeReader = () => {
@@ -297,14 +305,14 @@ export default function Books() {
     }
   }
   // 切页后把本地素材定位到该页分段起点
+  const clipStart = video.kind === 'local' && video.clip ? video.clip[0] : -1
   useEffect(() => {
-    if (mode === 'reader' && video.kind === 'local' && video.clip) {
-      const timer = setTimeout(() => {
-        Taro.createVideoContext('stage-video').seek(video.clip![0])
-      }, 120)
-      return () => clearTimeout(timer)
-    }
-  }, [mode, current, video.kind])
+    if (mode !== 'reader' || clipStart < 0) return
+    const timer = setTimeout(() => {
+      Taro.createVideoContext('stage-video').seek(clipStart)
+    }, 120)
+    return () => clearTimeout(timer)
+  }, [mode, current, clipStart])
 
   // ---------- 开发期调试桥 ----------
   // miniprogram-automator 的元素/data 查询在 Taro 运行时下会挂起（页面 data 只有

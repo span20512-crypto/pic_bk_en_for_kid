@@ -99,7 +99,8 @@ export function play(text: string, handlers: PlayHandlers = {}): PlayController 
     ctx.offTimeUpdate()
     ctx.offEnded()
     ctx.offError()
-    ctx.src = url
+    // LRU 命中同 URL 时不重新赋 src，避免触发整段重新加载
+    if (ctx.src !== url) ctx.src = url
 
     ctx.onCanplay(() => {
       if (stopped || !ctx) return

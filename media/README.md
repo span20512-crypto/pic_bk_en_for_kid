@@ -6,7 +6,9 @@
 
 ## 用法
 
-1. 把素材放进本目录，如 `ant-elephant.mp4`（《小蚂蚁和大象》原版动画，91s / 720×1280）
+1. 把素材放进本目录，文件名与 `src/data/books/` 里对应书的 `local.file` 一致。
+   当前：`impatient-caterpillar.mp4`（《很没耐心的毛毛虫》原版动画，91s / 720×1280，
+   配给 wait-caterpillar）；《小蚂蚁和大象》原片待补
 2. 启动本地媒体服务器：`npm run serve:media`
 3. 小程序启动时自动探测 `http://127.0.0.1:8930/ping`，探测成功则阅读器切换为
    原版画面（按 `src/data/books.js` 里每页 `local.clip` 分段静音循环），

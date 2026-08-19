@@ -15,6 +15,7 @@
  */
 const vegetables = require('./books/vegetables');
 const antAndElephant = require('./books/ant-and-elephant');
+const waitCaterpillar = require('./books/wait-caterpillar');
 
 /** 未上线占位（pages 为空，released = false） */
 function soon(id, series, title, titleCn, tag, emoji, cover, level, source) {
@@ -86,8 +87,20 @@ const bookList = [
     'linear-gradient(135deg, #C7D2FE 0%, #6366F1 100%)', 2, '《偷月亮的小狼》'),
   soon('bragging-caterpillar', 'dreams', 'The Bragging Caterpillar', '爱吹牛的毛毛虫', '谦虚', '🐛',
     'linear-gradient(135deg, #D9F99D 0%, #84CC16 100%)', 2, '《爱吹牛的毛毛虫》'),
-  soon('wait-caterpillar', 'dreams', 'Wait, Little Caterpillar', '等一等，小毛毛虫', '耐心等待', '🦋',
-    'linear-gradient(135deg, #FBCFE8 0%, #EC4899 100%)', 2, '《很没耐心的毛毛虫》（改题）'),
+  {
+    id: 'wait-caterpillar',
+    series: 'dreams',
+    title: 'Wait, Little Caterpillar',
+    titleCn: '等一等，小毛毛虫',
+    tag: '耐心等待',
+    emoji: '🦋',
+    cover: 'linear-gradient(135deg, #FBCFE8 0%, #EC4899 100%)',
+    level: 2,
+    // V1.3 上架：本地原版参考素材（RedNote 6a4cd50f… 实际是本故事的原片）配属本书
+    released: true,
+    source: '《很没耐心的毛毛虫》（改题）',
+    pages: waitCaterpillar,
+  },
   soon('mouse-proved-it', 'dreams', 'The Mouse Who Proved It', '小老鼠的证明', '相信自己', '🐭',
     'linear-gradient(135deg, #E2E8F0 0%, #94A3B8 100%)', 2, '《小老鼠的证明》'),
 

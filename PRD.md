@@ -1,6 +1,7 @@
 # 「英语绘本馆」儿童英语绘本小程序 — 产品需求文档（PRD）
 
 > 仓库：`span20512-crypto/pic_bk_en_for_kid`
+> V1.3 · 2026-08-19 · 《等一等，小毛毛虫》上架（三本可读）；本地参考素材经画面核对实为该书原片，从蚂蚁书改配至此
 > V1.2 · 2026-08-18 · 技术栈迁移至 Taro 4（React + TypeScript）；新增开发期本地素材注入链路；《小蚂蚁和大象》恢复上架（与《蔬菜认知篇》双首发）
 > V1.1 · 2026-08-16 · 新增「认知启蒙」系列与第二个素材来源，首发绘本改为《蔬菜认知篇》
 > V1.0 · 2026-08-16 · 首版
@@ -172,6 +173,17 @@ V1.1 共 **36 本绘本 × 每本 6 页**，分 6 个系列（每系列 6 本）
 | Wait, Little Caterpillar | 等一等，小毛毛虫 | 耐心等待 | Level 2 | 《很没耐心的毛毛虫》🐛🦋（改题） |
 | The Mouse Who Proved It | 小老鼠的证明 | 相信自己 | Level 2 | 《小老鼠的证明》🐭🚁 |
 
+**《等一等，小毛毛虫》分页**（V1.3 上架，Level 2 首个样例；改题改写见 §2.2 第 3 条）：
+
+| 页 | 英文台词 | 生词 | 场景 |
+|---|---|---|---|
+| 1 | Kiki is a little green caterpillar. She wants to be a butterfly right now. | caterpillar / butterfly / want | meadow |
+| 2 | Kiki asks the big tree, when can I fly? Wait, little Kiki, says the tree. | ask / fly / wait | forest |
+| 3 | Munch, munch! Kiki eats many green leaves. She grows bigger and bigger. | eat / leaf / grow | meadow |
+| 4 | Now Kiki sleeps in a little cocoon. It is dark, but she is not afraid. | sleep / cocoon / dark | night |
+| 5 | Kiki waits and waits inside the cocoon. One day, the cocoon opens slowly. | inside / open / slowly | forest |
+| 6 | Wow! Kiki has two big beautiful wings. Now she can fly high in the sky. | wing / beautiful / sky | meadow |
+
 #### 系列三 · 好习惯养成 🪥
 
 | 绘本 | 中文 | 类型 | 等级 | 素材出处（小红书原作） |
@@ -219,7 +231,9 @@ V1.1 共 **36 本绘本 × 每本 6 页**，分 6 个系列（每系列 6 本）
 > `released` 与「内容是否写好」是**两件事**。有 `pages` 但 `released: false` 表示「内容已就绪、暂不首发」——
 > 内容检查（`scripts/verify.js`）与语料生成（`scripts/gen-tts.mjs`）都只看有没有 `pages`、不看 `released`，
 > 否则一本书临时下架就会把它已生成的语料判成孤儿、下次上架又要重新生成一遍。
-> V1.2 起《小蚂蚁和大象》恢复上架，与《蔬菜认知篇》并列可读（前者同时是本地素材注入链路的验证载体）。
+> V1.2 起《小蚂蚁和大象》恢复上架，与《蔬菜认知篇》并列可读；V1.3 起《等一等，小毛毛虫》上架，三本可读。
+> 本地参考素材（media/，见 §1.1）当前只有一段：经画面核对它是《很没耐心的毛毛虫》原片（而非最初
+> 标注的《小蚂蚁和大象》），故配属 wait-caterpillar；蚂蚁书的原片素材待补，期间走 Mixkit 占位。
 
 ### 3.3 绘本阅读器
 
@@ -360,11 +374,11 @@ V1.1 共 **36 本绘本 × 每本 6 页**，分 6 个系列（每系列 6 本）
 
 | # | 事项 | 优先级 | 状态 |
 |---|---|---|---|
-| 1 | 36 本绘本 × 6 页的双语台词与生词撰写（原创改写，禁用原作脚本） | P0 | 进行中 · 已完成 2 本（蔬菜认知篇、小蚂蚁和大象） |
-| 2 | 每页免版权视频选配（216 段，逐条验证可访问性） | P0 | 进行中 · 已选配并验证 12 段 |
-| 3 | 「播放绘本」交互实现（§3.4） | P0 | ✅ 已实现（`pages/books` + `core/narrator`） |
-| 4 | 视频内双语字幕组件（§3.5），进度驱动逐词高亮 | P0 | ✅ 已实现（`components/story-caption`） |
-| 5 | 女童声语料生成（满编约 770 条） | P0 | 进行中 · 已生成 63 条，覆盖已写完的 2 本 |
+| 1 | 36 本绘本 × 6 页的双语台词与生词撰写（原创改写，禁用原作脚本） | P0 | 进行中 · 已完成 3 本（蔬菜认知篇、小蚂蚁和大象、等一等小毛毛虫） |
+| 2 | 每页免版权视频选配（216 段，逐条验证可访问性） | P0 | 进行中 · 已选配并验证 18 段 |
+| 3 | 「播放绘本」交互实现（§3.4） | P0 | ✅ 已实现（`src/pages/books` 播放状态机 + `utils/tts`） |
+| 4 | 视频内双语字幕组件（§3.5），进度驱动逐词高亮 | P0 | ✅ 已实现（阅读器字幕层 + `utils/timing` 权重表） |
+| 5 | 女童声语料生成（满编约 770 条） | P0 | 进行中 · 覆盖已写完的 3 本（约 95 条） |
 | 6 | 矢量场景模板库 | P1 | ✅ 已实现 11 个模板（§4.3） |
 | 7 | 生词本 Tab | P1 | ✅ 已实现（含按绘本筛选、一键复习） |
 | 8 | 小程序后台配置 downloadFile 合法域名（`assets.mixkit.co`） | P1 | ⚠️ 待办 · 上线阻塞项 |
