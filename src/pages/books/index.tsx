@@ -501,7 +501,7 @@ export default function Books() {
         {book.pages.map((p: any, index: number) => (
           <SwiperItem key={index}>
             <View className='stage-outer'>
-              <View className={`stage scene-${p.scene}`}>
+              <View className={`stage scene-${p.scene} ${index === current && video.kind === 'local' && video.ready ? 'stage-local' : ''}`}>
                 {/* 仅当前页挂载 video（PRD §3.7） */}
                 {index === current && video.ready && !video.failed ? (
                   <Video
@@ -515,7 +515,9 @@ export default function Books() {
                     muted={!(verbatimVoice && playing)}
                     controls={false}
                     showCenterPlayBtn={false}
-                    objectFit='cover'
+                    // 本地参考素材已裁成 1.7:1 宽幅（剔除了原片字幕与推广横幅），
+                    // 用 contain 完整显示，避免 cover 放大裁切破坏构图；Mixkit 竖幅仍用 cover
+                    objectFit={video.kind === 'local' ? 'contain' : 'cover'}
                     onTimeUpdate={onVideoTime}
                     onError={onVideoError}
                   />

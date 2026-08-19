@@ -365,3 +365,8 @@
   bottom: 96px;
   background: rgba(180, 83, 9, 0.85);
 }
+
+/* 本地参考素材为 1.7:1 宽幅，contain 显示时上下留白用深色填充，避免露出场景渐变 */
+.stage-local {
+  background: #111827;
+}
