@@ -94,6 +94,21 @@ export default function Books() {
     }))
   }, [page])
 
+  /**
+   * verbatim 模式的字幕时间轴：把本页 clip 时长按各句的词权重之和切成归一化区段
+   * （[0,1) 上首尾相接）。原声语速大体均匀，按权重分配比按句数平均更贴合。
+   */
+  const sentSpans = useMemo(() => {
+    const timings = sentences.map((s) => buildWordTiming(s.text))
+    const total = timings.reduce((n, t) => n + t.total, 0) || 1
+    let acc = 0
+    return timings.map((t, idx) => {
+      const start = acc / total
+      acc += t.total
+      return { idx, start, end: acc / total, timing: t }
+    })
+  }, [sentences])
+
   // 本页视频源：本地原版素材（开发期）优先，其次 Mixkit 预下载，失败回落降级场景
   const video = useMemo(() => {
     const none = { kind: 'none', ready: false, failed: true, src: '', progress: 0, loading: false, clip: null as null | number[], base: '' }
@@ -213,6 +228,13 @@ export default function Books() {
     }, 80)
   }, [])
 
+  /**
+   * verbatim（原片直录）+ 本地素材：朗读由原片自带声轨承担，不启 TTS。
+   * 逐词高亮改由视频进度驱动 —— 把本页 clip 时长按各句权重切成区段，
+   * onVideoTime 里按 currentTime 落在哪一段来定位句/词（见 onVideoTime）。
+   */
+  const verbatimVoice = !!(book && book.verbatim && video.kind === 'local' && video.clip)
+
   const startPlayback = useCallback(() => {
     if (!sentences.length) return
     const token = ++playSeq.current
@@ -220,8 +242,15 @@ export default function Books() {
     cnTimer.current = setTimeout(() => {
       if (token === playSeq.current) setShowCn(true)
     }, config.CN_DELAY_MS)
+    if (verbatimVoice) {
+      // 从本页分段起点重放，字幕跟着视频走
+      const ctx = Taro.createVideoContext('stage-video')
+      ctx.seek(video.clip![0])
+      ctx.play()
+      return
+    }
     playSentence(0, token, sentences)
-  }, [sentences, playSentence])
+  }, [sentences, playSentence, verbatimVoice, video.clip])
 
   const togglePlay = () => (playing ? stopPlayback() : startPlayback())
 
@@ -300,6 +329,20 @@ export default function Books() {
     if (video.kind !== 'local' || !video.clip) return
     const t = e.detail.currentTime
     const [start, end] = video.clip
+
+    // verbatim 模式：用视频进度驱动字幕（原声在念这页台词），播放到段尾即停
+    if (verbatimVoice && playing) {
+      if (t >= end) { stopPlayback(); return }
+      const frac = Math.min(1, Math.max(0, (t - start) / Math.max(0.1, end - start)))
+      const hit = sentSpans.find((sp) => frac < sp.end) || sentSpans[sentSpans.length - 1]
+      if (hit) {
+        const inner = (frac - hit.start) / Math.max(0.001, hit.end - hit.start)
+        const wi = wordIndexAt(inner * hit.timing.total, hit.timing, hit.timing.total)
+        if (hit.idx !== sentIdx) setSentIdx(hit.idx)
+        if (wi !== wordIdx) setWordIdx(wi)
+      }
+    }
+
     if (t < start - 0.5 || t > end) {
       const now = Date.now()
       if (now - videoCtxSeekGuard.current < 400) return // 防抖：seek 后事件回涌
@@ -437,7 +480,9 @@ export default function Books() {
                     src={video.src}
                     autoplay
                     loop
-                    muted
+                    // verbatim 模式用原片自带声轨当旁白：仅在「播放绘本」期间出声，
+                    // 其余时间（含画面静音循环）一律静音（PRD §3.4）
+                    muted={!(verbatimVoice && playing)}
                     controls={false}
                     showCenterPlayBtn={false}
                     objectFit='cover'
@@ -457,7 +502,9 @@ export default function Books() {
                   <View className='video-loading'>🎬 视频加载中 {video.progress}%</View>
                 )}
                 {index === current && video.kind === 'local' && (
-                  <View className='video-loading'>🧪 原版参考素材（本地）</View>
+                  <View className='video-loading'>
+                    {verbatimVoice ? '🧪 原版素材 · 原声朗读（本地）' : '🧪 原版参考素材（本地）'}
+                  </View>
                 )}
                 {/* 开发期提示：本页配了本地素材但媒体服务器不可达 */}
                 {index === current && video.kind !== 'local' && p.local && (

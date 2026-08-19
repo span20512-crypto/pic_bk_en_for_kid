@@ -98,6 +98,10 @@ const bookList = [
     level: 2,
     // V1.3 上架：本地原版参考素材（RedNote 6a4cd50f… 实际是本故事的原片）配属本书
     released: true,
+    // ⚠️ verbatim：台词为原片字幕逐字转录，是 PRD §2.2 第 1 条的已知例外
+    // （产品负责人 2026-08-19 知情决定）。上线前必须改写或下架，见该书文件头注释。
+    // 该标记驱动：gen-tts 跳过语料生成、verify 跳过分级句长校验并强制告警。
+    verbatim: true,
     source: '《很没耐心的毛毛虫》（改题）',
     pages: waitCaterpillar,
   },

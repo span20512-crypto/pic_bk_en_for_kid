@@ -87,21 +87,24 @@ for (const b of bookList) {
         if (enLower.indexOf(needle) < 0) {
           err(`${ptag} 生词 "${g.word}"（匹配形 "${g.match || g.word}"）未出现在台词中`);
         }
-        addCorpus(g.word, ptag);
+        if (!b.verbatim) addCorpus(g.word, ptag);
       });
     }
 
     // 分级句长（PRD §3.2）：拟声/感叹短句（≤2 词）不计入句数
+    // verbatim（原片直录）书按原片节拍走，不适用分级约束，语料也不入 TTS 管线
     const sents = splitSentences(p.en);
-    const real = sents.filter((s) => s.split(/\s+/).length > 2);
-    const maxSents = b.level === 1 ? 2 : 3;
-    const maxWords = b.level === 1 ? 10 : 14;
-    if (real.length > maxSents) err(`${ptag} Level ${b.level} 句数超限: ${real.length} > ${maxSents}`);
-    sents.forEach((s) => {
-      const wc = s.split(/\s+/).length;
-      if (wc > maxWords) err(`${ptag} 单句词数超限（${wc} > ${maxWords}）: "${s}"`);
-      addCorpus(s, ptag);
-    });
+    if (!b.verbatim) {
+      const real = sents.filter((s) => s.split(/\s+/).length > 2);
+      const maxSents = b.level === 1 ? 2 : 3;
+      const maxWords = b.level === 1 ? 10 : 14;
+      if (real.length > maxSents) err(`${ptag} Level ${b.level} 句数超限: ${real.length} > ${maxSents}`);
+      sents.forEach((s) => {
+        const wc = s.split(/\s+/).length;
+        if (wc > maxWords) err(`${ptag} 单句词数超限（${wc} > ${maxWords}）: "${s}"`);
+        addCorpus(s, ptag);
+      });
+    }
 
     if (p.videoUrl && !/^https:\/\//.test(p.videoUrl)) err(`${ptag} videoUrl 必须是 https`);
     if (p.local) {
@@ -112,6 +115,12 @@ for (const b of bookList) {
       }
     }
   });
+
+  // verbatim 书：台词是第三方原片转录，上线前必须处理，每次自查都提醒
+  if (b.verbatim) {
+    warn(`${tag} 【verbatim 原片直录】台词为第三方原片字幕转录，是 PRD §2.2 的已知例外。` +
+      (b.released ? '当前 released=true —— 提审/上线前必须改写台词或下架本书。' : '当前未上架。'));
+  }
 
   // 本地分段应首尾相接不重叠（同一素材文件时）
   const clips = b.pages.filter((p) => p.local).map((p) => p.local.clip);

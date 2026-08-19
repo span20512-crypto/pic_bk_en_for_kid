@@ -49,6 +49,12 @@ function add(text) {
 // 否则一本书临时下架会把它的语料判成孤儿，下次上架又要重新生成
 for (const book of bookList) {
   if (!book.pages || !book.pages.length) continue;
+  // verbatim（原片直录）书不进语音管线：不把第三方脚本送去合成，也不让合成音频入库。
+  // 这类书的朗读由原片自带声轨承担，本地素材不可用时走无声降级。
+  if (book.verbatim) {
+    console.log(`↷ 跳过 verbatim 绘本: ${book.titleCn}（台词为原片转录，朗读走原声）`);
+    continue;
+  }
   for (const page of book.pages) {
     splitSentences(page.en).forEach(add);
     (page.glossary || []).forEach((g) => add(g.word));

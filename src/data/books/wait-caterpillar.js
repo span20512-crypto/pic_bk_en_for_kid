@@ -1,17 +1,30 @@
 /**
- * 《等一等，小毛毛虫》Wait, Little Caterpillar —— 故事类（Level 2 · 耐心等待）
+ * 《等一等，小毛毛虫》Wait, Little Caterpillar
  *
- * 选题出处：小红书 @快乐学英语008《很没耐心的毛毛虫》（仅溯源，见 catalog.js 的 source 字段）。
- * ⚠️ 改题改写（PRD §2.2）：原题与 Ross Burach《The Very Impatient Caterpillar》撞版，
- * 本书改题并重写情节 —— 毛毛虫奇奇学会等待，台词为原创简化文本，不使用原视频脚本。
+ * ⚠️⚠️ 本书处于 **verbatim（原片直录）模式** —— 与本产品其余绘本的内容政策不同 ⚠️⚠️
  *
- * 分级：Level 2 —— 每页 2-3 句、单句 ≤ 14 词、可含并列句，每页 3 个生词（PRD §3.2）。
+ * en 字段是小红书 @小耀祖之快乐学英语《很没耐心的毛毛虫》原片**烧录字幕的逐字转录**，
+ * 由产品负责人在知悉风险后明确决定采用（2026-08-19），用于与原片画面/原声完全对齐。
+ * 这是对 PRD §2.2 第 1 条「只借用题材，不搬运脚本」的**已知例外**，并且：
+ *   - 原片本身改编自 Ross Burach《The Very Impatient Caterpillar》（商业出版绘本），
+ *     属双重版权风险；
+ *   - 台词随本文件进入公开 GitHub 仓库与 git 历史。
  *
- * local 字段：开发期本地媒体服务器上的原版参考素材（版权内容，不进包不进仓库），
- * clip: [起, 止]（秒）—— 91.2s 整片按 6 页均分，可手动微调。
- * 仅 serve-media 探活成功时启用；正式环境恒走 videoUrl 的免版权占位（PRD §2.2）。
+ * 🚫 **提审/上线前必须处理**：把本书 released 改回 false，或将 en/cn 换成原创改写
+ *    （改写版本见 git 历史 commit 3c0e3ba 之前的版本），并解除 verbatim 标记。
+ *    见 PRD §2.2 的 verbatim 条目与 §7 待办。
  *
- * ⚠️ 改动任何 en 字段后必须重跑 `npm run gen:tts` 补语料。
+ * 配套约定（由 verbatim 标记驱动，见 catalog.js）：
+ *   - **不生成 TTS 语料**（scripts/gen-tts.mjs 跳过）：不把第三方脚本送进语音管线，
+ *     也避免合成音频入库。朗读改由原片自带声轨承担（阅读器在本地素材模式下取消静音）。
+ *   - **不做分级句长校验**（scripts/verify.js 跳过）：原片节拍不受 §3.2 Level 2 的
+ *     每页 2-3 句约束。
+ *   - 本地素材不可用时，播放绘本走无声降级（字幕按估算节奏走完）。
+ *
+ * cn 字段：原片中文字幕为机器翻译且有明显错误（"建立你的蛹并等待两周两周"
+ * "他爆发得太快了重击"），照录会让孩子读到错的中文，故按英文原义重译。
+ *
+ * clip: [起, 止]（秒）对齐原片实际情节节拍；末页止于 87.5s，避开 88s 起的纯黑片尾。
  */
 
 module.exports = [
@@ -22,77 +35,77 @@ module.exports = [
     accent: '#84CC16',
     // Yellow caterpillar walking on a leaf
     videoUrl: 'https://assets.mixkit.co/videos/6961/6961-360.mp4',
-    local: { file: 'impatient-caterpillar.mp4', clip: [0, 15.2] },
-    en: 'Kiki is a little green caterpillar. She wants to be a butterfly right now.',
-    cn: '奇奇是一条绿色的小毛毛虫。她现在就想变成蝴蝶。',
+    local: { file: 'impatient-caterpillar.mp4', clip: [0, 9] },
+    en: 'Once upon a time there was a very impatient caterpillar.',
+    cn: '很久很久以前，有一只非常没有耐心的毛毛虫。',
     glossary: [
+      { word: 'impatient', cn: '没有耐心的' },
       { word: 'caterpillar', cn: '毛毛虫' },
-      { word: 'butterfly', cn: '蝴蝶' },
-      { word: 'want', cn: '想要', match: 'wants' },
+      { word: 'once', cn: '曾经；从前' },
     ],
   },
   {
     emoji: '🌳',
-    decor: ['🐛', '❓'],
+    decor: ['🐛', '🦋'],
     scene: 'forest',
     accent: '#16A34A',
     // Huge trees in a large green forest
     videoUrl: 'https://assets.mixkit.co/videos/5040/5040-360.mp4',
-    local: { file: 'impatient-caterpillar.mp4', clip: [15.2, 30.4] },
-    en: 'Kiki asks the big tree, when can I fly? Wait, little Kiki, says the tree.',
-    cn: '奇奇问大树：我什么时候才能飞呀？大树说：等一等，小奇奇。',
+    local: { file: 'impatient-caterpillar.mp4', clip: [9, 21] },
+    en: `He saw other caterpillars climbing a tree. "Hey! Where are you going?" "We're going to become butterflies!"`,
+    cn: '他看到别的毛毛虫在往树上爬。"嘿！你们要去哪儿呀？""我们要去变成蝴蝶啦！"',
     glossary: [
-      { word: 'ask', cn: '问', match: 'asks' },
-      { word: 'fly', cn: '飞' },
-      { word: 'wait', cn: '等一等' },
-    ],
-  },
-  {
-    emoji: '🍃',
-    decor: ['🐛', '☀️'],
-    scene: 'meadow',
-    accent: '#22C55E',
-    // Sunshine through green leaves
-    videoUrl: 'https://assets.mixkit.co/videos/16185/16185-360.mp4',
-    local: { file: 'impatient-caterpillar.mp4', clip: [30.4, 45.6] },
-    en: 'Munch, munch! Kiki eats many green leaves. She grows bigger and bigger.',
-    cn: '啊呜，啊呜！奇奇吃了好多绿叶子。她长得越来越大。',
-    glossary: [
-      { word: 'eat', cn: '吃', match: 'eats' },
-      { word: 'leaf', cn: '叶子', match: 'leaves' },
-      { word: 'grow', cn: '生长', match: 'grows' },
-    ],
-  },
-  {
-    emoji: '🌙',
-    decor: ['🐛', '⭐'],
-    scene: 'night',
-    accent: '#6366F1',
-    // Dark Starry Night
-    videoUrl: 'https://assets.mixkit.co/videos/4148/4148-360.mp4',
-    local: { file: 'impatient-caterpillar.mp4', clip: [45.6, 60.8] },
-    en: 'Now Kiki sleeps in a little cocoon. It is dark, but she is not afraid.',
-    cn: '现在奇奇睡在一个小小的茧里。里面黑黑的，但她一点也不害怕。',
-    glossary: [
-      { word: 'sleep', cn: '睡觉', match: 'sleeps' },
-      { word: 'cocoon', cn: '茧' },
-      { word: 'dark', cn: '黑暗的' },
+      { word: 'climb', cn: '爬', match: 'climbing' },
+      { word: 'butterfly', cn: '蝴蝶', match: 'butterflies' },
+      { word: 'become', cn: '变成' },
     ],
   },
   {
     emoji: '⏳',
-    decor: ['🌳', '🍂'],
+    decor: ['🐛', '🌳'],
     scene: 'forest',
     accent: '#A16207',
     // Tree branches in the breeze
     videoUrl: 'https://assets.mixkit.co/videos/1188/1188-360.mp4',
-    local: { file: 'impatient-caterpillar.mp4', clip: [60.8, 76.0] },
-    en: 'Kiki waits and waits inside the cocoon. One day, the cocoon opens slowly.',
-    cn: '奇奇在茧里等呀等。有一天，茧慢慢地打开了。',
+    local: { file: 'impatient-caterpillar.mp4', clip: [21, 34] },
+    en: `"Wait for me!" He zoomed up the tree. "Build your chrysalis and wait two weeks." "Two weeks?! That's WAY too long!"`,
+    cn: '"等等我！"他嗖地爬上了大树。"结好你的蛹，然后等上两个星期。""两个星期？！那也太久了吧！"',
     glossary: [
-      { word: 'inside', cn: '在…里面' },
-      { word: 'open', cn: '打开', match: 'opens' },
-      { word: 'slowly', cn: '慢慢地' },
+      { word: 'wait', cn: '等待' },
+      { word: 'chrysalis', cn: '蛹' },
+      { word: 'week', cn: '星期', match: 'weeks' },
+    ],
+  },
+  {
+    emoji: '🪺',
+    decor: ['🐛', '❓'],
+    scene: 'forest',
+    accent: '#22C55E',
+    // Sunshine through green leaves
+    videoUrl: 'https://assets.mixkit.co/videos/16185/16185-360.mp4',
+    local: { file: 'impatient-caterpillar.mp4', clip: [34, 52] },
+    en: `He wrapped himself up fast. "How about now?" "No! Be patient!" But he could not wait.`,
+    cn: '他飞快地把自己裹了起来。"现在好了吗？""还没呢！要有耐心！"可是他就是等不及。',
+    glossary: [
+      { word: 'wrap', cn: '包裹', match: 'wrapped' },
+      { word: 'patient', cn: '有耐心的' },
+      { word: 'fast', cn: '快速地' },
+    ],
+  },
+  {
+    emoji: '😢',
+    decor: ['🍂', '🐛'],
+    scene: 'meadow',
+    accent: '#64748B',
+    // Maple leaves in the sunshine
+    videoUrl: 'https://assets.mixkit.co/videos/48110/48110-360.mp4',
+    local: { file: 'impatient-caterpillar.mp4', clip: [52, 70] },
+    en: `He burst out too soon. He fell to the ground. "Oh no! Where are my wings?!" His friend smiled. "Growing takes time."`,
+    cn: '他太早冲出来了。他摔到了地上。"糟糕！我的翅膀呢？！"他的朋友笑了笑："长大是需要时间的。"',
+    glossary: [
+      { word: 'burst', cn: '冲出；破开' },
+      { word: 'wing', cn: '翅膀', match: 'wings' },
+      { word: 'grow', cn: '长大；生长', match: 'growing' },
     ],
   },
   {
@@ -102,13 +115,13 @@ module.exports = [
     accent: '#FF8C42',
     // Monarch butterfly takes flight
     videoUrl: 'https://assets.mixkit.co/videos/4276/4276-360.mp4',
-    local: { file: 'impatient-caterpillar.mp4', clip: [76.0, 91.1] },
-    en: 'Wow! Kiki has two big beautiful wings. Now she can fly high in the sky.',
-    cn: '哇！奇奇有了两只又大又美的翅膀。现在她可以在天空中高高地飞啦。',
+    local: { file: 'impatient-caterpillar.mp4', clip: [70, 87.5] },
+    en: `This time, he waited. "I did it! I'm a BUTTERFLY! Waiting was so worth it!"`,
+    cn: '这一次，他耐心地等待着。"我做到啦！我是一只蝴蝶！这样的等待太值得了！"',
     glossary: [
-      { word: 'wing', cn: '翅膀', match: 'wings' },
-      { word: 'beautiful', cn: '美丽的' },
-      { word: 'sky', cn: '天空' },
+      { word: 'wait', cn: '等待', match: 'waited' },
+      { word: 'butterfly', cn: '蝴蝶', match: 'butterfly' },
+      { word: 'worth', cn: '值得' },
     ],
   },
 ];
