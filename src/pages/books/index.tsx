@@ -94,6 +94,22 @@ export default function Books() {
     }))
   }, [page])
 
+  // verbatim（原片直录）书：台词照搬原片，句数不受 §3.2 分级约束
+  const verbatimLayout = !!(book && book.verbatim)
+
+  /**
+   * 字幕渲染范围：常规书整页多句同屏（当前句高亮、其余降透明，PRD §3.5）；
+   * verbatim 书每页有 4-5 句，同屏会把字幕撑满整个视频框、盖住画面 ——
+   * 与原片「一次一句」的呈现也不符，故只渲染当前句（未播放时给第 1 句作预览）。
+   */
+  const visibleSentences = useMemo(() => {
+    const all = sentences.map((s, si) => ({ s, si }))
+    if (!verbatimLayout || all.length <= 3) return all
+    const at = sentIdx >= 0 ? Math.min(sentIdx, all.length - 1) : 0
+    return all.slice(at, at + 1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sentences, verbatimLayout, sentIdx])
+
   /**
    * verbatim 模式的字幕时间轴：把本页 clip 时长按各句的词权重之和切成归一化区段
    * （[0,1) 上首尾相接）。原声语速大体均匀，按权重分配比按句数平均更贴合。
@@ -515,7 +531,7 @@ export default function Books() {
                 {index === current && (
                   <View className={`subs ${playing ? 'subs-breathing' : ''}`}>
                     <View className='sub-en'>
-                      {sentences.map((s, si) => (
+                      {visibleSentences.map(({ s, si }) => (
                         <View key={si} className={`sent ${playing && si !== sentIdx ? 'sent-dim' : ''}`}>
                           {s.words.map((w, wi) => (
                             <Text
