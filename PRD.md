@@ -29,7 +29,7 @@
 | 前端框架 | Taro 4（React 18 + TypeScript，webpack5 编译到微信小程序，产物在 `dist/`） |
 | 渲染引擎 | 微信端由微信自身渲染（WebView，可渐进启用 Skyline）。**Flutter 引擎不参与微信端**——Taro 4 的 Flutter 渲染仅用于鸿蒙（HarmonyOS）编译目标，作为未来多端扩展预留 |
 | 样式 | SCSS + 一份原子类对照表 `src/styles/utils.scss`（全局注入）；单位用 px（关闭 pxtransform，不随屏宽缩放，与设计稿一致） |
-| 开发期素材注入 | 本地媒体服务器 `scripts/serve-media.mjs`（`media/` 目录，gitignore）：原版参考素材只在开发机局域网可用，客户端探活成功才切换，正式环境恒走免版权 CDN（§2.2 约束不变） |
+| 开发期素材注入 | 本地媒体服务器 `scripts/serve-media.mjs`（`media/` 目录，gitignore）：原版参考素材只在开发机局域网可用，正式环境恒走免版权 CDN（§2.2 约束不变）。客户端按 `LOCAL_MEDIA_BASES` 候选表「**探活 + 试错**」双通道选址——模拟器命中 `127.0.0.1`，真机命中开发机局域网 IP。<br>⚠️ 真机预览时 `request` 探活必被合法域名校验拦截（局域网 http 地址不可能进白名单），但 `<video>` 的 src 不受该约束（§3.7），故探活失败**不放弃**，由 video 逐个试候选、`onError` 推进游标，全部失败才回落占位 |
 | 交互变体 | 点按态使用原生 `hover-class`（WXSS 的 `active:` 变体不可靠） |
 | 视频 | 原生 `<video>` 组件 + 串行预下载队列 `utils/video-preloader.js` |
 | 旁白语音 | 构建期离线预生成 MP3（微软 `en-US-AnaNeural` 女童声，语速 -15%），托管于对象存储公开桶，客户端按散列拼 URL 播放 |

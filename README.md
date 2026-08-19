@@ -32,7 +32,11 @@ npm run serve:media              # 可选：本地媒体服务器（media/ 原�
 
 **开发期本地素材注入**：原版参考素材（版权内容）放 `media/`（已 gitignore，不进包不进仓库），
 `npm run serve:media` 后客户端探活 `/ping` 成功即按每页 `local.clip` 分段静音循环原版画面，
-失败自动回落 Mixkit 免版权占位。真机联调改 `src/utils/config.ts` 的 `LOCAL_MEDIA_BASE` 为局域网 IP。
+失败自动回落 Mixkit 免版权占位。
+
+**真机预览**同样支持：手机与电脑连同一 Wi-Fi 即可 —— 客户端会并发探活 `src/utils/config.ts` 里
+`LOCAL_MEDIA_BASES` 的全部候选地址（模拟器命中 `127.0.0.1`、真机命中开发机局域网 IP），无需手动切换。
+换了网络导致电脑 IP 变化时，把 `serve:media` 启动时打印的新 IP 填进该数组即可。
 
 ## 目录结构
 

@@ -8,8 +8,9 @@
  * - GET /ping        → 探活（客户端 utils/media.ts 用）
  * - GET /<file>      → 流式返回 media/ 下的文件，支持 Range（视频 seek 必需）
  *
- * 真机联调：手机与电脑同一 Wi-Fi，把 src/utils/config.ts 里 LOCAL_MEDIA_BASE
- * 的 127.0.0.1 换成下方打印的局域网 IP。
+ * 真机联调：手机与电脑同一 Wi-Fi 即可 —— 客户端会并发探活 config.ts 里
+ * LOCAL_MEDIA_BASES 的全部候选地址，模拟器命中 127.0.0.1、真机命中局域网 IP。
+ * 只有当下方打印的局域网 IP 不在候选列表里（换了网络）时才需要改配置。
  */
 import http from 'http'
 import fs from 'fs'
@@ -78,7 +79,7 @@ server.listen(PORT, () => {
   const lan = Object.values(nets).flat().filter((n) => n && n.family === 'IPv4' && !n.internal)
   console.log(`媒体服务器已启动（目录 media/）：`)
   console.log(`  http://127.0.0.1:${PORT}/          ← 开发者工具用`)
-  lan.forEach((n) => console.log(`  http://${n.address}:${PORT}/     ← 真机联调用（改 LOCAL_MEDIA_BASE）`))
+  lan.forEach((n) => console.log(`  http://${n.address}:${PORT}/     ← 真机联调用（需在 config.ts 的 LOCAL_MEDIA_BASES 里）`))
   const files = fs.existsSync(MEDIA_DIR) ? fs.readdirSync(MEDIA_DIR).filter((f) => !f.startsWith('.') && f !== 'README.md') : []
   console.log(files.length ? `可用素材: ${files.join(', ')}` : '⚠ media/ 目录为空')
 })

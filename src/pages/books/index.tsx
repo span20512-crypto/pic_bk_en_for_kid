@@ -9,7 +9,7 @@ import * as store from '../../utils/store'
 import * as tts from '../../utils/tts'
 import * as preloader from '../../utils/video-preloader'
 import { buildWordTiming, tokenize, wordIndexAt } from '../../utils/timing'
-import { localMediaAvailable, localMediaUrl, probeLocalMedia } from '../../utils/media'
+import { localMediaAvailable, localMediaBase, localMediaUrl, noteBaseFailed, probeLocalMedia } from '../../utils/media'
 import './index.scss'
 
 const { seriesMeta, seriesOrder, bookList } = require('../../data/books')
@@ -96,11 +96,13 @@ export default function Books() {
 
   // 本页视频源：本地原版素材（开发期）优先，其次 Mixkit 预下载，失败回落降级场景
   const video = useMemo(() => {
-    if (!page) return { kind: 'none', ready: false, failed: true, src: '', progress: 0, loading: false, clip: null as null | number[] }
-    if (localMediaAvailable() && page.local) {
+    const none = { kind: 'none', ready: false, failed: true, src: '', progress: 0, loading: false, clip: null as null | number[], base: '' }
+    if (!page) return none
+    // 本地素材：探活确认或仍有待试错的候选时都尝试（真机预览探活必失败，见 utils/media）
+    if (page.local && localMediaAvailable()) {
       return {
         kind: 'local', ready: true, failed: false, loading: false, progress: 100,
-        src: localMediaUrl(page.local.file), clip: page.local.clip,
+        src: localMediaUrl(page.local.file), clip: page.local.clip, base: localMediaBase(),
       }
     }
     const st = page.videoUrl ? preloader.stateOf(page.videoUrl) : null
@@ -112,6 +114,7 @@ export default function Books() {
       progress: (st && st.progress) || 0,
       src: (st && st.path) || '',
       clip: null,
+      base: '',
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, videoTick])
@@ -304,6 +307,13 @@ export default function Books() {
       Taro.createVideoContext('stage-video').seek(start)
     }
   }
+  // 本地素材加载失败：淘汰该候选地址，改试下一个（全部失败则回落 Mixkit）
+  const onVideoError = () => {
+    if (video.kind !== 'local') return
+    noteBaseFailed(video.base)
+    setVideoTick((t) => t + 1)
+  }
+
   // 切页后把本地素材定位到该页分段起点
   const clipStart = video.kind === 'local' && video.clip ? video.clip[0] : -1
   useEffect(() => {
@@ -432,6 +442,7 @@ export default function Books() {
                     showCenterPlayBtn={false}
                     objectFit='cover'
                     onTimeUpdate={onVideoTime}
+                    onError={onVideoError}
                   />
                 ) : (
                   <View className='fallback'>
@@ -450,7 +461,7 @@ export default function Books() {
                 )}
                 {/* 开发期提示：本页配了本地素材但媒体服务器不可达 */}
                 {index === current && video.kind !== 'local' && p.local && (
-                  <View className='video-loading video-hint'>⚠ 本地素材未连接：npm run serve:media</View>
+                  <View className='video-loading video-hint'>⚠ 本地素材未连接：电脑跑 serve:media，真机需同一 Wi-Fi</View>
                 )}
 
                 {/* 双语字幕叠加在视频画面内部（PRD §3.4 / §3.5） */}
