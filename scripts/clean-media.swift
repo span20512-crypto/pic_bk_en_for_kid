@@ -50,7 +50,10 @@ let comp = AVMutableVideoComposition(asset: asset) { request in
         let white = CIImage(color: .white)
         let l = white.cropped(to: CGRect(x: 0, y: 0, width: W * lEnd, height: cropH))
         let r = white.cropped(to: CGRect(x: W * rStart, y: 0, width: W * (1 - rStart), height: cropH))
-        let mask = r.composited(over: l.composited(over: black))
+        // mask 自身做高斯羽化：模糊区与清晰区之间是渐变过渡，避免出现一条硬边界线
+        let hardMask = r.composited(over: l.composited(over: black))
+        let mask = hardMask.clampedToExtent()
+            .applyingGaussianBlur(sigma: Double(W) * 0.05).cropped(to: ext)
         out = CIFilter(name: "CIBlendWithMask", parameters: [
             kCIInputImageKey: blurred, kCIInputBackgroundImageKey: cropped, kCIInputMaskImageKey: mask])!.outputImage!
     }
