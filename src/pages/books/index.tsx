@@ -82,6 +82,7 @@ export default function Books() {
   const silentTimer = useRef<any>(null)
   const listScrollTop = useRef(0)
   const savedScrollTop = useRef(0)
+  const videoProgressed = useRef(false) // 当前页视频是否真的在走（看门狗与播放兜底共用）
 
   const pageCount = book ? book.pages.length : 0
   const page = book && current < pageCount ? book.pages[current] : null
@@ -155,14 +156,18 @@ export default function Books() {
         src: localMediaUrl(page.local.file), clip: page.local.clip, base: localMediaBase(),
       }
     }
+    // 网络视频：**直接播 https 直链**，预下载只作加速。
+    // 真机上 downloadFile 受合法域名白名单约束（未配置则静默失败），若像从前那样
+    // 非等下载完才给 src，真机就永远没有画面；而 <video> 的 src 不受该约束（PRD §3.7）。
     const st = page.videoUrl ? preloader.stateOf(page.videoUrl) : null
+    const cached = st && st.status === 'done' ? st.path : ''
     return {
       kind: 'remote',
-      ready: !!(st && st.status === 'done'),
-      failed: !page.videoUrl || !!(st && st.status === 'failed'),
-      loading: !!(st && (st.status === 'loading' || st.status === 'queued')),
+      ready: !!page.videoUrl,
+      failed: !page.videoUrl,
+      loading: !cached && !!(st && (st.status === 'loading' || st.status === 'queued')),
       progress: (st && st.progress) || 0,
-      src: (st && st.path) || '',
+      src: cached || page.videoUrl || '',
       clip: null,
       base: '',
     }
@@ -282,6 +287,13 @@ export default function Books() {
       const ctx = Taro.createVideoContext('stage-video')
       ctx.seek(video.clip![0])
       ctx.play()
+      // 兜底：verbatim 的字幕推进完全依赖视频 onTimeUpdate，视频若根本没动起来
+      // （真机常见：局域网 http 被 iOS 拦掉），按钮会永远停在"播放中…"。
+      // 给它一个时限，没动就改走字幕自走，保证阅读流程不被卡住（PRD §6）。
+      gapTimer.current = setTimeout(() => {
+        if (token !== playSeq.current || videoProgressed.current) return
+        playSentence(0, token, sentences)
+      }, 2500)
       return
     }
     playSentence(0, token, sentences)
@@ -361,6 +373,7 @@ export default function Books() {
 
   const videoCtxSeekGuard = useRef(0)
   const onVideoTime = (e: any) => {
+    videoProgressed.current = true
     if (video.kind !== 'local' || !video.clip) return
     const t = e.detail.currentTime
     const [start, end] = video.clip
@@ -385,6 +398,23 @@ export default function Books() {
       Taro.createVideoContext('stage-video').seek(start)
     }
   }
+  /**
+   * 本地素材加载看门狗。
+   * 真机上局域网 http 地址常因 iOS ATS / 本地网络权限被静默拒绝 —— 既不触发 onError
+   * 也永远不 onTimeUpdate，画面就一直黑着。这里给它一个时限：迟迟没有播放进展就
+   * 判定该候选不通，淘汰后触发重渲染，最终回落到网络视频/降级画面。
+   */
+  useEffect(() => {
+    if (mode !== 'reader' || video.kind !== 'local' || !video.src) return
+    videoProgressed.current = false
+    const timer = setTimeout(() => {
+      if (videoProgressed.current) return
+      noteBaseFailed(video.base)
+      setVideoTick((t) => t + 1)
+    }, 3500)
+    return () => clearTimeout(timer)
+  }, [mode, current, video.kind, video.src, video.base])
+
   // 本地素材加载失败：淘汰该候选地址，改试下一个（全部失败则回落 Mixkit）
   const onVideoError = () => {
     if (video.kind !== 'local') return
@@ -418,6 +448,7 @@ export default function Books() {
       state: () => ({
         mode, current, playing, sentIdx, wordIdx,
         videoKind: video.kind, videoReady: video.ready, videoFailed: video.failed,
+        videoSrc: String(video.src).slice(0, 60),
         localMedia: localMediaAvailable(),
       }),
     }
