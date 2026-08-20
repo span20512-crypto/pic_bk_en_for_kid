@@ -73,6 +73,7 @@ export default function Books() {
   const [showCn, setShowCn] = useState(false)
   const [gloss, setGloss] = useState<any>(null)
   const [videoTick, setVideoTick] = useState(0) // 预下载状态变化触发重渲染
+  const [localLive, setLocalLive] = useState(false) // 本地素材是否真的起播（未起播时用降级画面盖住黑屏）
 
   const playSeq = useRef(0)
   const ctlRef = useRef<tts.PlayController | null>(null)
@@ -373,7 +374,10 @@ export default function Books() {
 
   const videoCtxSeekGuard = useRef(0)
   const onVideoTime = (e: any) => {
-    videoProgressed.current = true
+    if (!videoProgressed.current) {
+      videoProgressed.current = true
+      if (video.kind === 'local') setLocalLive(true)
+    }
     if (video.kind !== 'local' || !video.clip) return
     const t = e.detail.currentTime
     const [start, end] = video.clip
@@ -407,11 +411,12 @@ export default function Books() {
   useEffect(() => {
     if (mode !== 'reader' || video.kind !== 'local' || !video.src) return
     videoProgressed.current = false
+    setLocalLive(false)
     const timer = setTimeout(() => {
       if (videoProgressed.current) return
       noteBaseFailed(video.base)
       setVideoTick((t) => t + 1)
-    }, 3500)
+    }, 2500)
     return () => clearTimeout(timer)
   }, [mode, current, video.kind, video.src, video.base])
 
@@ -566,10 +571,21 @@ export default function Books() {
                   </View>
                 )}
 
+                {/* 本地素材起播前盖一层降级画面：真机上局域网地址常连不上，
+                    直接露出 video 元素就是一片黑，这里保证任何时候都有画面 */}
+                {index === current && video.kind === 'local' && !localLive && (
+                  <View className='fallback'>
+                    <View className='blob' style={{ background: p.accent }} />
+                    <Text className='fb-main'>{p.emoji}</Text>
+                    <Text className='fb-decor fb-decor-tl'>{p.decor[0]}</Text>
+                    <Text className='fb-decor fb-decor-br'>{p.decor[1]}</Text>
+                  </View>
+                )}
+
                 {index === current && video.loading && !video.ready && (
                   <View className='video-loading'>🎬 视频加载中 {video.progress}%</View>
                 )}
-                {index === current && video.kind === 'local' && (
+                {index === current && video.kind === 'local' && localLive && (
                   <View className='video-loading'>
                     {verbatimVoice ? '🧪 原版素材 · 原声朗读（本地）' : '🧪 原版参考素材（本地）'}
                   </View>
